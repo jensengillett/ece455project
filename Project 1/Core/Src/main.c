@@ -1,25 +1,26 @@
 /* USER CODE BEGIN Header */
 /**
-  ******************************************************************************
-  * @file           : main.c
-  * @brief          : Main program body
-  ******************************************************************************
-  * @attention
-  *
-  * Copyright (c) 2024 STMicroelectronics.
-  * All rights reserved.
-  *
-  * This software is licensed under terms that can be found in the LICENSE file
-  * in the root directory of this software component.
-  * If no LICENSE file comes with this software, it is provided AS-IS.
-  *
-  ******************************************************************************
-  */
+ ******************************************************************************
+ * @file           : main.c
+ * @brief          : Main program body
+ ******************************************************************************
+ * @attention
+ *
+ * Copyright (c) 2024 STMicroelectronics.
+ * All rights reserved.
+ *
+ * This software is licensed under terms that can be found in the LICENSE file
+ * in the root directory of this software component.
+ * If no LICENSE file comes with this software, it is provided AS-IS.
+ *
+ ******************************************************************************
+ */
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
 #include "cmsis_os.h"
 #include "usb_host.h"
+#include "stdlib.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -53,7 +54,13 @@ osThreadId traffic_generatHandle;
 osThreadId adjust_flowHandle;
 osThreadId light_stateHandle;
 osThreadId sys_manageHandle;
+osMutexId cars_array_mutexHandle;
+osMutexId traffic_rate_mutexHandle;
+osMutexId light_status_mutexHandle;
 /* USER CODE BEGIN PV */
+int light_status;
+int cars[16];
+int traffic_rate;
 
 /* USER CODE END PV */
 
@@ -113,20 +120,33 @@ int main(void)
 
   /* USER CODE END 2 */
 
+  /* Create the mutex(es) */
+  /* definition and creation of cars_array_mutex */
+  osMutexDef(cars_array_mutex);
+  cars_array_mutexHandle = osMutexCreate(osMutex(cars_array_mutex));
+
+  /* definition and creation of traffic_rate_mutex */
+  osMutexDef(traffic_rate_mutex);
+  traffic_rate_mutexHandle = osMutexCreate(osMutex(traffic_rate_mutex));
+
+  /* definition and creation of light_status_mutex */
+  osMutexDef(light_status_mutex);
+  light_status_mutexHandle = osMutexCreate(osMutex(light_status_mutex));
+
   /* USER CODE BEGIN RTOS_MUTEX */
-  /* add mutexes, ... */
+	/* add mutexes, ... */
   /* USER CODE END RTOS_MUTEX */
 
   /* USER CODE BEGIN RTOS_SEMAPHORES */
-  /* add semaphores, ... */
+	/* add semaphores, ... */
   /* USER CODE END RTOS_SEMAPHORES */
 
   /* USER CODE BEGIN RTOS_TIMERS */
-  /* start timers, add new ones, ... */
+	/* start timers, add new ones, ... */
   /* USER CODE END RTOS_TIMERS */
 
   /* USER CODE BEGIN RTOS_QUEUES */
-  /* add queues, ... */
+	/* add queues, ... */
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
@@ -151,7 +171,7 @@ int main(void)
   sys_manageHandle = osThreadCreate(osThread(sys_manage), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
-  /* add threads, ... */
+	/* add threads, ... */
   /* USER CODE END RTOS_THREADS */
 
   /* Start scheduler */
@@ -160,12 +180,12 @@ int main(void)
   /* We should never get here as control is now taken by the scheduler */
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
-  {
+	while (1)
+	{
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-  }
+	}
   /* USER CODE END 3 */
 }
 
@@ -422,130 +442,168 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN Header_StartDefaultTask */
 /**
-  * @brief  Function implementing the defaultTask thread.
-  * @param  argument: Not used
-  * @retval None
-  */
+ * @brief  Function implementing the defaultTask thread.
+ * @param  argument: Not used
+ * @retval None
+ */
 /* USER CODE END Header_StartDefaultTask */
 void StartDefaultTask(void const * argument)
 {
   /* init code for USB_HOST */
   MX_USB_HOST_Init();
   /* USER CODE BEGIN 5 */
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
-  }
+	/* Infinite loop */
+	for(;;)
+	{
+		osDelay(1);
+	}
   /* USER CODE END 5 */
 }
 
 /* USER CODE BEGIN Header_TrafficGeneration */
 /**
-* @brief Function implementing the traffic_generat thread.
-* @param argument: Not used
-* @retval None
-*/
+ * @brief Function implementing the traffic_generat thread.
+ * @param argument: Not used
+ * @retval None
+ */
 /* USER CODE END Header_TrafficGeneration */
 void TrafficGeneration(void const * argument)
 {
   /* USER CODE BEGIN TrafficGeneration */
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
-  }
+	/* Infinite loop */
+	for(;;)
+	{
+		osDelay(1);
+	}
   /* USER CODE END TrafficGeneration */
 }
 
 /* USER CODE BEGIN Header_AdjustFlow */
 /**
-* @brief Function implementing the adjust_flow thread.
-* @param argument: Not used
-* @retval None
-*/
+ * @brief Function implementing the adjust_flow thread.
+ * @param argument: Not used
+ * @retval None
+ */
 /* USER CODE END Header_AdjustFlow */
 void AdjustFlow(void const * argument)
 {
   /* USER CODE BEGIN AdjustFlow */
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
-  }
+	/* Infinite loop */
+	for(;;)
+	{
+		osDelay(1);
+	}
   /* USER CODE END AdjustFlow */
 }
 
 /* USER CODE BEGIN Header_LightState */
 /**
-* @brief Function implementing the light_state thread.
-* @param argument: Not used
-* @retval None
-*/
+ * @brief Function implementing the light_state thread.
+ * @param argument: Not used
+ * @retval None
+ */
 /* USER CODE END Header_LightState */
 void LightState(void const * argument)
 {
   /* USER CODE BEGIN LightState */
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
-  }
+	/* Infinite loop */
+	for(;;)
+	{
+		osMutexWait(traffic_rate_mutexHandle);
+		int rate = traffic_rate;
+		osMutexRelease(traffic_rate_mutexHandle);
+		// turn green LED on
+		light_status = 2;
+		// modulate traffic rate to 1
+		osDelay(3000 + 4000 * rate);
+
+		// turn yellow LED on
+		light_status = 1;
+		osDelay(1000);
+
+		osMutexWait(traffic_rate_mutexHandle);
+		int rate = traffic_rate;
+		osMutexRelease(traffic_rate_mutexHandle);
+		// turn red LED on
+		light_status = 0;
+		// modulate traffic rate to 1
+		osDelay(2000 + 4000 * rate);
+	}
   /* USER CODE END LightState */
 }
 
-int generateTraffic(){
-	// read potentiometer
-	// randomly generates traffic based on potentiometer
+int trafficGenerated(){
+	osMutexWait(traffic_rate_mutexHandle);
+	int traffic = traffic_rate;
+	osMutexRelease(traffic_rate_mutexHandle);
+	// modulate traffic rate
+
+	srand(time(NULL));
+	int random = rand() % 10;
+	if (random > traffic) {
+		return 1;
+	}
+	return 0;
 }
 
 /* USER CODE BEGIN Header_SysManage */
 /**
-* @brief Function implementing the sys_manage thread.
-* @param argument: Not used
-* @retval None
-*/
+ * @brief Function implementing the sys_manage thread.
+ * @param argument: Not used
+ * @retval None
+ */
 /* USER CODE END Header_SysManage */
 void SysManage(void const * argument)
 {
   /* USER CODE BEGIN SysManage */
-  /* Infinite loop */
-  for(;;)
-  {
-	light_colour = light_state; // this should be a constant
+	/* Infinite loop */
 	int i;
-	for (i = 15; i>0; i--){
-		if (light_colour == 2) { //green
-			cars[i] = cars[i-1];
-			cars[i - 1] = 0;
-		}
-		else if (light_colour == 1) { //yellow
-			if (i > 8) {
+	for(;;)
+	{
+		osMutexWait(light_status_mutexHandle);
+		light_colour = light_state; // this should be a constant
+		osMutexRelease(light_status_mutexHandle);
+
+		osMutexWait(cars_array_mutexHandle);
+		for (i = 15; i>0; i--){
+			if (light_colour == 2) { //green
 				cars[i] = cars[i-1];
-				cars[i-1] = 0;
+				cars[i - 1] = 0;
 			}
-			else {
-				if (!cars[i]){
+			else if (light_colour == 1) { //yellow
+				if (i > 8) {
 					cars[i] = cars[i-1];
 					cars[i-1] = 0;
 				}
+				else {
+					if (!cars[i]){
+						cars[i] = cars[i-1];
+						cars[i-1] = 0;
+					}
+				}
 			}
-		}
-		else { //red
-			if (i > 11){
-				cars[i] = cars[i-1];
-				cars[i-1] = 0;
-			}
-			else if (i < 8){
-				if (!cars[i]) {
+			else { //red
+				if (i > 11){
 					cars[i] = cars[i-1];
 					cars[i-1] = 0;
 				}
+				else if (i < 8){
+					if (!cars[i]) {
+						cars[i] = cars[i-1];
+						cars[i-1] = 0;
+					}
+				}
 			}
 		}
+		if (trafficGenerated()){
+			cars[0] = 1;
+		}
+		else {
+			cars[0] = 0;
+		}
+		osMutexRelease(cars_array_mutexHandle);
+		osDelay(1000);
 	}
-    osDelay(1000);
-  }
   /* USER CODE END SysManage */
 }
 
@@ -556,11 +614,11 @@ void SysManage(void const * argument)
 void Error_Handler(void)
 {
   /* USER CODE BEGIN Error_Handler_Debug */
-  /* User can add his own implementation to report the HAL error return state */
-  __disable_irq();
-  while (1)
-  {
-  }
+	/* User can add his own implementation to report the HAL error return state */
+	__disable_irq();
+	while (1)
+	{
+	}
   /* USER CODE END Error_Handler_Debug */
 }
 
@@ -575,7 +633,7 @@ void Error_Handler(void)
 void assert_failed(uint8_t *file, uint32_t line)
 {
   /* USER CODE BEGIN 6 */
-  /* User can add his own implementation to report the file name and line number,
+	/* User can add his own implementation to report the file name and line number,
      ex: printf("Wrong parameters value: file %s on line %d\r\n", file, line) */
   /* USER CODE END 6 */
 }
