@@ -7,6 +7,6 @@
 ../Core/Src/main.c:429:6:TrafficGeneration	1
 ../Core/Src/main.c:447:6:AdjustFlow	2
 ../Core/Src/main.c:480:5:trafficGenerated	2
-../Core/Src/main.c:497:6:LightState	1
-../Core/Src/main.c:559:6:SysManage	11
-../Core/Src/main.c:626:6:Error_Handler	1
+../Core/Src/main.c:497:6:LightState	3
+../Core/Src/main.c:562:6:SysManage	11
+../Core/Src/main.c:629:6:Error_Handler	1

@@ -497,14 +497,16 @@ int trafficGenerated(){
 void LightState(void const * argument)
 {
   /* USER CODE BEGIN LightState */
+	float rate = 0;
 	/* Infinite loop */
 	for(;;)
 	{
 		osMutexWait(traffic_rate_mutexHandle, osWaitForever);
 		// int rate = traffic_rate; // TODO: traffic_queue_1
-		//osEvent event = osMessageGet(traffic_queue_2Handle, osWaitForever);
-		//int rate = event.value.v;
-		int rate = 1;
+		osEvent event = osMessageGet(traffic_queue_2Handle, osWaitForever);
+		if(event.status == 1){
+			rate = event.value.v;
+		}
 		osMutexRelease(traffic_rate_mutexHandle);
 		// turn green LED on
 		HAL_GPIO_WritePin(GPIOC, Red_Light_Pin, GPIO_PIN_RESET);
@@ -530,9 +532,10 @@ void LightState(void const * argument)
 		osDelay(1000);
 
 		osMutexWait(traffic_rate_mutexHandle, osWaitForever);
-		//event = osMessageGet(traffic_queue_2Handle, osWaitForever); //TODO: traffic_queue_1
-		//rate = event.value.v;
-		rate = 1;
+		event = osMessageGet(traffic_queue_2Handle, osWaitForever); //TODO: traffic_queue_1
+		if(event.status == 1){
+			rate = event.value.v;
+		}
 		osMutexRelease(traffic_rate_mutexHandle);
 		// turn red LED on
 		HAL_GPIO_WritePin(GPIOC, Red_Light_Pin, GPIO_PIN_SET);
