@@ -56,8 +56,9 @@ osMessageQId traffic_queue_2Handle;
 osMailQId cars_array_queueHandle;
 osMessageQId light_status_queueHandle;
 osMutexId cars_array_mutexHandle;
-osMutexId traffic_rate_mutexHandle;
+osMutexId traffic_rate_2_mutexHandle;
 osMutexId light_status_mutexHandle;
+osMutexId traffic_rate_1_mutexHandle;
 /* USER CODE BEGIN PV */
 int light_status;
 int cars[16];
@@ -124,13 +125,17 @@ int main(void)
   osMutexDef(cars_array_mutex);
   cars_array_mutexHandle = osMutexCreate(osMutex(cars_array_mutex));
 
-  /* definition and creation of traffic_rate_mutex */
-  osMutexDef(traffic_rate_mutex);
-  traffic_rate_mutexHandle = osMutexCreate(osMutex(traffic_rate_mutex));
+  /* definition and creation of traffic_rate_2_mutex */
+  osMutexDef(traffic_rate_2_mutex);
+  traffic_rate_2_mutexHandle = osMutexCreate(osMutex(traffic_rate_2_mutex));
 
   /* definition and creation of light_status_mutex */
   osMutexDef(light_status_mutex);
   light_status_mutexHandle = osMutexCreate(osMutex(light_status_mutex));
+
+  /* definition and creation of traffic_rate_1_mutex */
+  osMutexDef(traffic_rate_1_mutex);
+  traffic_rate_1_mutexHandle = osMutexCreate(osMutex(traffic_rate_1_mutex));
 
   /* USER CODE BEGIN RTOS_MUTEX */
 	/* add mutexes, ... */
@@ -146,11 +151,11 @@ int main(void)
 
   /* Create the queue(s) */
   /* definition and creation of traffic_queue_1 */
-  osMessageQDef(traffic_queue_1, 16, uint16_t);
+  osMessageQDef(traffic_queue_1, 16, float);
   traffic_queue_1Handle = osMessageCreate(osMessageQ(traffic_queue_1), NULL);
 
   /* definition and creation of traffic_queue_2 */
-  osMessageQDef(traffic_queue_2, 16, uint16_t);
+  osMessageQDef(traffic_queue_2, 16, float);
   traffic_queue_2Handle = osMessageCreate(osMessageQ(traffic_queue_2), NULL);
 
   /* definition and creation of cars_array_queue */
