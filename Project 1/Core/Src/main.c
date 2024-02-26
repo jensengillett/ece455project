@@ -151,11 +151,11 @@ int main(void)
 
   /* Create the queue(s) */
   /* definition and creation of traffic_queue_1 */
-  osMessageQDef(traffic_queue_1, 16, float);
+  osMessageQDef(traffic_queue_1, 16, uint16_t);
   traffic_queue_1Handle = osMessageCreate(osMessageQ(traffic_queue_1), NULL);
 
   /* definition and creation of traffic_queue_2 */
-  osMessageQDef(traffic_queue_2, 16, float);
+  osMessageQDef(traffic_queue_2, 16, uint16_t);
   traffic_queue_2Handle = osMessageCreate(osMessageQ(traffic_queue_2), NULL);
 
   /* definition and creation of cars_array_queue */
@@ -452,8 +452,7 @@ void TrafficGeneration(void const * argument)
 void AdjustFlow(void const * argument)
 {
   /* USER CODE BEGIN AdjustFlow */
-	int raw = 0;
-	float scaled = 0;
+	uint16_t raw = 0;
 	/* Infinite loop */
 	for(;;)
 	{
@@ -461,15 +460,16 @@ void AdjustFlow(void const * argument)
 		HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
 		raw = HAL_ADC_GetValue(&hadc1);
 		if(raw > 2400){
-			scaled = 1;
-		} else {
-			scaled = raw / 2400.0;
+			raw = 2400;
 		}
 		osMutexWait(traffic_rate_1_mutexHandle, osWaitForever);
-		osMessagePut(traffic_queue_1Handle, scaled, osWaitForever);
+		osMessageGet(traffic_queue_1Handle, 0);
+		osMessagePut(traffic_queue_1Handle, raw, osWaitForever);
 		osMutexRelease(traffic_rate_1_mutexHandle);
+
 		osMutexWait(traffic_rate_2_mutexHandle, osWaitForever);
-		osMessagePut(traffic_queue_2Handle, scaled, osWaitForever);
+		osMessageGet(traffic_queue_2Handle, 0);
+		osMessagePut(traffic_queue_2Handle, raw, osWaitForever);
 		osMutexRelease(traffic_rate_2_mutexHandle);
 		osDelay(1);
 	}
@@ -485,19 +485,21 @@ void AdjustFlow(void const * argument)
  */
 
 int trafficGenerated(){
-	float traffic = 0;
+	uint16_t traffic = 0;
+	float scaled = 0;
 	osMutexWait(traffic_rate_1_mutexHandle, osWaitForever);
 	//int traffic = traffic_rate; //TODO: traffic_queue_0
 	osEvent event = osMessageGet(traffic_queue_1Handle, 0);
-	if(event.status == 1){
+	if(event.status == osEventMessage){
 		traffic = event.value.v;
 	}
 	osMutexRelease(traffic_rate_1_mutexHandle);
+	scaled = traffic / 2400.0;
 	// modulate traffic rate from 1 to 10
 
 	srand(time(NULL));
 	int random = rand() % 10;
-	if (random < traffic*10) {
+	if (random < scaled*10) {
 		return 1;
 	}
 	return 0;
@@ -506,17 +508,19 @@ int trafficGenerated(){
 void LightState(void const * argument)
 {
   /* USER CODE BEGIN LightState */
-	float rate = 0;
+	uint16_t rate = 0;
+	float scaled = 0;
 	/* Infinite loop */
 	for(;;)
 	{
 		osMutexWait(traffic_rate_2_mutexHandle, osWaitForever);
 		// int rate = traffic_rate; // TODO: traffic_queue_1
 		osEvent event = osMessageGet(traffic_queue_2Handle, 0);
-		if(event.status == 1){
+		if(event.status == osEventMessage){
 			rate = event.value.v;
 		}
 		osMutexRelease(traffic_rate_2_mutexHandle);
+		scaled = rate / 2400.0;
 		// turn green LED on
 		HAL_GPIO_WritePin(GPIOC, Red_Light_Pin, GPIO_PIN_RESET);
 		HAL_GPIO_WritePin(GPIOC, Amber_Light_Pin, GPIO_PIN_RESET);
@@ -527,7 +531,7 @@ void LightState(void const * argument)
 		osMutexRelease(light_status_mutexHandle);
 		// light_status = 2; //TODO: light_queue_0
 		// modulate traffic rate to 1
-		osDelay(3000 * rate);
+		osDelay((uint32_t)(3000 + 3000 * scaled));
 
 		// turn yellow LED on
 		HAL_GPIO_WritePin(GPIOC, Red_Light_Pin, GPIO_PIN_RESET);
@@ -542,10 +546,11 @@ void LightState(void const * argument)
 
 		osMutexWait(traffic_rate_2_mutexHandle, osWaitForever);
 		event = osMessageGet(traffic_queue_2Handle, 0); //TODO: traffic_queue_1
-		if(event.status == 1){
+		if(event.status == osEventMessage){
 			rate = event.value.v;
 		}
 		osMutexRelease(traffic_rate_2_mutexHandle);
+		scaled = rate / 2400.0;
 		// turn red LED on
 		HAL_GPIO_WritePin(GPIOC, Red_Light_Pin, GPIO_PIN_SET);
 		HAL_GPIO_WritePin(GPIOC, Amber_Light_Pin, GPIO_PIN_RESET);
@@ -556,7 +561,7 @@ void LightState(void const * argument)
 		osMutexRelease(light_status_mutexHandle);
 		// light_status = 0;
 		// modulate traffic rate to 1
-		osDelay(3000 * (1-rate));
+		osDelay((uint32_t)(3000 + 3000 * (1-scaled)));
 	}
   /* USER CODE END LightState */
 }
@@ -589,7 +594,7 @@ void SysManage(void const * argument)
 	{
 		osMutexWait(light_status_mutexHandle, osWaitForever);
 		osEvent event = osMessageGet(light_status_queueHandle, 0); //TODO: light_queue_0
-		if(event.status == 1){
+		if(event.status == osEventMessage){
 			light_colour = event.value.v;
 		}
 		osMutexRelease(light_status_mutexHandle);
@@ -636,7 +641,7 @@ void SysManage(void const * argument)
 		osMutexWait(cars_array_mutexHandle, osWaitForever);
 		// int* mail = (int *)osMailAlloc(cars_array_queueHandle, osWaitForever);
 		//osMailPut(cars_array_queueHandle, cars);
-		osMessagePut(cars_array_queueHandle, cars_int, osWaitForever);
+		//osMessagePut(cars_array_queueHandle, cars_int, osWaitForever);
 		osMutexRelease(cars_array_mutexHandle);
 		osDelay(500);
 	}
