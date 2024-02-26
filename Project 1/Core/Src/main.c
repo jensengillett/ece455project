@@ -465,8 +465,9 @@ void AdjustFlow(void const * argument)
 int trafficGenerated(){
 	osMutexWait(traffic_rate_mutexHandle, osWaitForever);
 	// int traffic = traffic_rate; //TODO: traffic_queue_0
-	osEvent event = osMessageGet(traffic_queue_1Handle, osWaitForever);
-	int traffic = event.value.v;
+	//osEvent event = osMessageGet(traffic_queue_1Handle, osWaitForever);
+	//int traffic = event.value.v;
+	int traffic = 1;
 	osMutexRelease(traffic_rate_mutexHandle);
 	// modulate traffic rate from 1 to 10
 
@@ -486,10 +487,15 @@ void LightState(void const * argument)
 	{
 		osMutexWait(traffic_rate_mutexHandle, osWaitForever);
 		// int rate = traffic_rate; // TODO: traffic_queue_1
-		osEvent event = osMessageGet(traffic_queue_2Handle, osWaitForever);
-		int rate = event.value.v;
+		//osEvent event = osMessageGet(traffic_queue_2Handle, osWaitForever);
+		//int rate = event.value.v;
+		int rate = 1;
 		osMutexRelease(traffic_rate_mutexHandle);
 		// turn green LED on
+		HAL_GPIO_WritePin(GPIOC, Red_Light_Pin, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(GPIOC, Amber_Light_Pin, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(GPIOC, Green_Light_Pin, GPIO_PIN_SET);
+
 		osMutexWait(light_status_mutexHandle, osWaitForever);
 		osMessagePut(light_status_queueHandle, 2, osWaitForever);
 		osMutexRelease(light_status_mutexHandle);
@@ -498,6 +504,10 @@ void LightState(void const * argument)
 		osDelay(3000 + 3000 * rate);
 
 		// turn yellow LED on
+		HAL_GPIO_WritePin(GPIOC, Red_Light_Pin, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(GPIOC, Amber_Light_Pin, GPIO_PIN_SET);
+		HAL_GPIO_WritePin(GPIOC, Green_Light_Pin, GPIO_PIN_RESET);
+
 		osMutexWait(light_status_mutexHandle, osWaitForever);
 		osMessagePut(light_status_queueHandle, 1, osWaitForever);
 		osMutexRelease(light_status_mutexHandle);
@@ -505,10 +515,15 @@ void LightState(void const * argument)
 		osDelay(1000);
 
 		osMutexWait(traffic_rate_mutexHandle, osWaitForever);
-		event = osMessageGet(traffic_queue_2Handle, osWaitForever); //TODO: traffic_queue_1
-		rate = event.value.v;
+		//event = osMessageGet(traffic_queue_2Handle, osWaitForever); //TODO: traffic_queue_1
+		//rate = event.value.v;
+		rate = 1;
 		osMutexRelease(traffic_rate_mutexHandle);
 		// turn red LED on
+		HAL_GPIO_WritePin(GPIOC, Red_Light_Pin, GPIO_PIN_SET);
+		HAL_GPIO_WritePin(GPIOC, Amber_Light_Pin, GPIO_PIN_RESET);
+		HAL_GPIO_WritePin(GPIOC, Green_Light_Pin, GPIO_PIN_RESET);
+
 		osMutexWait(light_status_mutexHandle, osWaitForever);
 		osMessagePut(light_status_queueHandle, 0, osWaitForever);
 		osMutexRelease(light_status_mutexHandle);
@@ -532,11 +547,14 @@ void SysManage(void const * argument)
 	/* Infinite loop */
 	int i;
 	int cars[16];
+	int light_colour = 0;
 	for(;;)
 	{
 		osMutexWait(light_status_mutexHandle, osWaitForever);
-		osEvent event = osMessageGet(light_status_queueHandle, osWaitForever); //TODO: light_queue_0
-		int light_colour = event.value.v;
+		osEvent event = osMessageGet(light_status_queueHandle, 0); //TODO: light_queue_0
+		if(event.status == 1){
+			light_colour = event.value.v;
+		}
 		osMutexRelease(light_status_mutexHandle);
 
 		// osMutexWait(cars_array_mutexHandle); //TODO: cars_queue_0
