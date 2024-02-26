@@ -567,13 +567,23 @@ void LightState(void const * argument)
  * @param argument: Not used
  * @retval None
  */
+
+int32_t convert_to_integer(int* traffic_array){
+	int i;
+	int32_t converted_number;
+	for (i=0; i<19; i++){
+		converted_number |= traffic_array[i] << (18-i);
+	}
+	return converted_number;
+}
+
 /* USER CODE END Header_SysManage */
 void SysManage(void const * argument)
 {
   /* USER CODE BEGIN SysManage */
 	/* Infinite loop */
 	int i;
-	int cars[16];
+	int cars[19];
 	int light_colour = 0;
 	for(;;)
 	{
@@ -585,7 +595,7 @@ void SysManage(void const * argument)
 		osMutexRelease(light_status_mutexHandle);
 
 		// osMutexWait(cars_array_mutexHandle); //TODO: cars_queue_0
-		for (i = 15; i>0; i--){
+		for (i = 18; i>0; i--){
 			if (light_colour == 2) { //green
 				cars[i] = cars[i-1];
 				cars[i - 1] = 0;
@@ -621,10 +631,12 @@ void SysManage(void const * argument)
 		else {
 			cars[0] = 0;
 		}
+		int32_t cars_int = convert_to_integer(cars);
 		// osMutexRelease(cars_array_mutexHandle);
 		osMutexWait(cars_array_mutexHandle, osWaitForever);
 		// int* mail = (int *)osMailAlloc(cars_array_queueHandle, osWaitForever);
 		//osMailPut(cars_array_queueHandle, cars);
+		osMessagePut(cars_array_queueHandle, cars_int, osWaitForever);
 		osMutexRelease(cars_array_mutexHandle);
 		osDelay(500);
 	}
