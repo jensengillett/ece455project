@@ -93,7 +93,7 @@ void SysManage(void const * argument);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
-
+	srand(314159);
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
@@ -483,7 +483,6 @@ void AdjustFlow(void const * argument)
  * @param argument: Not used
  * @retval None
  */
-
 int trafficGenerated(){
 	uint16_t traffic = 0;
 	float scaled = 0;
@@ -497,8 +496,7 @@ int trafficGenerated(){
 	scaled = traffic / 2400.0;
 	// modulate traffic rate from 1 to 10
 
-	srand(time(NULL));
-	int random = rand() % 10;
+	float random = (float)(rand() % 10);
 	if (random < scaled*10) {
 		return 1;
 	}
@@ -588,7 +586,7 @@ void SysManage(void const * argument)
   /* USER CODE BEGIN SysManage */
 	/* Infinite loop */
 	int i;
-	int cars[19];
+	int cars[19] = {};
 	int light_colour = 0;
 	for(;;)
 	{
@@ -636,13 +634,28 @@ void SysManage(void const * argument)
 		else {
 			cars[0] = 0;
 		}
-		int32_t cars_int = convert_to_integer(cars);
+		//int32_t cars_int = convert_to_integer(cars);
 		// osMutexRelease(cars_array_mutexHandle);
-		osMutexWait(cars_array_mutexHandle, osWaitForever);
+		//osMutexWait(cars_array_mutexHandle, osWaitForever);
 		// int* mail = (int *)osMailAlloc(cars_array_queueHandle, osWaitForever);
 		//osMailPut(cars_array_queueHandle, cars);
 		//osMessagePut(cars_array_queueHandle, cars_int, osWaitForever);
-		osMutexRelease(cars_array_mutexHandle);
+		//osMutexRelease(cars_array_mutexHandle);
+		HAL_GPIO_WritePin(GPIOC, Shift_Reg_Reset_Pin, GPIO_PIN_RESET);
+		osDelay(1);
+		HAL_GPIO_WritePin(GPIOC, Shift_Reg_Reset_Pin, GPIO_PIN_SET);
+		//osDelay(1);
+		for(i = 18; i >= 0; i--){
+			if(cars[i] != 0){
+				HAL_GPIO_WritePin(GPIOC, Shift_Reg_Data_Pin, GPIO_PIN_SET);
+			}
+			//osDelay(1);
+			HAL_GPIO_WritePin(GPIOC, Shift_Reg_Clock_Pin, GPIO_PIN_SET);
+			//osDelay(1);
+			HAL_GPIO_WritePin(GPIOC, Shift_Reg_Clock_Pin, GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(GPIOC, Shift_Reg_Data_Pin, GPIO_PIN_RESET);
+			//osDelay(1);
+		}
 		osDelay(500);
 	}
   /* USER CODE END SysManage */
