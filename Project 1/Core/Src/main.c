@@ -502,6 +502,20 @@ void AdjustFlow(void const * argument)
  * @param argument: Not used
  * @retval None
  */
+
+int trafficGenerated(){
+	osMutexWait(traffic_rate_mutexHandle);
+	int traffic = traffic_rate;
+	osMutexRelease(traffic_rate_mutexHandle);
+	// modulate traffic rate from 1 to 10
+
+	srand(time(NULL));
+	int random = rand() % 10;
+	if (random > traffic) {
+		return 1;
+	}
+	return 0;
+}
 /* USER CODE END Header_LightState */
 void LightState(void const * argument)
 {
@@ -515,7 +529,7 @@ void LightState(void const * argument)
 		// turn green LED on
 		light_status = 2;
 		// modulate traffic rate to 1
-		osDelay(3000 + 4000 * rate);
+		osDelay(3000 + 3000 * rate);
 
 		// turn yellow LED on
 		light_status = 1;
@@ -527,23 +541,9 @@ void LightState(void const * argument)
 		// turn red LED on
 		light_status = 0;
 		// modulate traffic rate to 1
-		osDelay(2000 + 4000 * rate);
+		osDelay(3000 + 3000 * rate);
 	}
   /* USER CODE END LightState */
-}
-
-int trafficGenerated(){
-	osMutexWait(traffic_rate_mutexHandle);
-	int traffic = traffic_rate;
-	osMutexRelease(traffic_rate_mutexHandle);
-	// modulate traffic rate
-
-	srand(time(NULL));
-	int random = rand() % 10;
-	if (random > traffic) {
-		return 1;
-	}
-	return 0;
 }
 
 /* USER CODE BEGIN Header_SysManage */
@@ -602,7 +602,7 @@ void SysManage(void const * argument)
 			cars[0] = 0;
 		}
 		osMutexRelease(cars_array_mutexHandle);
-		osDelay(1000);
+		osDelay(500);
 	}
   /* USER CODE END SysManage */
 }
