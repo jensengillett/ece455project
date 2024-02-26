@@ -20,11 +20,11 @@
 #include "main.h"
 #include "cmsis_os.h"
 #include "usb_host.h"
-#include "stdlib.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include <stdlib.h>
+#include <time.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -54,6 +54,10 @@ osThreadId traffic_generatHandle;
 osThreadId adjust_flowHandle;
 osThreadId light_stateHandle;
 osThreadId sys_manageHandle;
+osMessageQId traffic_queue_1Handle;
+osMessageQId traffic_queue_2Handle;
+osMailQId cars_array_queueHandle;
+osMessageQId light_status_queueHandle;
 osMutexId cars_array_mutexHandle;
 osMutexId traffic_rate_mutexHandle;
 osMutexId light_status_mutexHandle;
@@ -144,6 +148,23 @@ int main(void)
   /* USER CODE BEGIN RTOS_TIMERS */
 	/* start timers, add new ones, ... */
   /* USER CODE END RTOS_TIMERS */
+
+  /* Create the queue(s) */
+  /* definition and creation of traffic_queue_1 */
+  osMessageQDef(traffic_queue_1, 16, uint16_t);
+  traffic_queue_1Handle = osMessageCreate(osMessageQ(traffic_queue_1), NULL);
+
+  /* definition and creation of traffic_queue_2 */
+  osMessageQDef(traffic_queue_2, 16, uint16_t);
+  traffic_queue_2Handle = osMessageCreate(osMessageQ(traffic_queue_2), NULL);
+
+  /* definition and creation of cars_array_queue */
+  osMailQDef(cars_array_queue, 16, uint16_t);
+  cars_array_queueHandle = osMailCreate(osMailQ(cars_array_queue), NULL);
+
+  /* definition and creation of light_status_queue */
+  osMessageQDef(light_status_queue, 16, uint16_t);
+  light_status_queueHandle = osMessageCreate(osMessageQ(light_status_queue), NULL);
 
   /* USER CODE BEGIN RTOS_QUEUES */
 	/* add queues, ... */
@@ -504,8 +525,10 @@ void AdjustFlow(void const * argument)
  */
 
 int trafficGenerated(){
-	osMutexWait(traffic_rate_mutexHandle);
-	int traffic = traffic_rate;
+	osMutexWait(traffic_rate_mutexHandle, osWaitForever);
+	// int traffic = traffic_rate; //TODO: traffic_queue_0
+	osEvent event = osMessageGet(traffic_queue_1Handle, osWaitForever);
+	int traffic = event.value.v;
 	osMutexRelease(traffic_rate_mutexHandle);
 	// modulate traffic rate from 1 to 10
 
@@ -523,23 +546,35 @@ void LightState(void const * argument)
 	/* Infinite loop */
 	for(;;)
 	{
-		osMutexWait(traffic_rate_mutexHandle);
-		int rate = traffic_rate;
+		osMutexWait(traffic_rate_mutexHandle, osWaitForever);
+		// int rate = traffic_rate; // TODO: traffic_queue_1
+		osEvent event = osMessageGet(traffic_queue_2Handle, osWaitForever);
+		int rate = event.value.v;
 		osMutexRelease(traffic_rate_mutexHandle);
 		// turn green LED on
-		light_status = 2;
+		osMutexWait(light_status_mutexHandle, osWaitForever);
+		osMessagePut(light_status_queueHandle, 2, osWaitForever);
+		osMutexRelease(light_status_mutexHandle);
+		// light_status = 2; //TODO: light_queue_0
 		// modulate traffic rate to 1
 		osDelay(3000 + 3000 * rate);
 
 		// turn yellow LED on
-		light_status = 1;
+		osMutexWait(light_status_mutexHandle, osWaitForever);
+		osMessagePut(light_status_queueHandle, 1, osWaitForever);
+		osMutexRelease(light_status_mutexHandle);
+		// light_status = 1;
 		osDelay(1000);
 
-		osMutexWait(traffic_rate_mutexHandle);
-		int rate = traffic_rate;
+		osMutexWait(traffic_rate_mutexHandle, osWaitForever);
+		event = osMessageGet(traffic_queue_2Handle, osWaitForever); //TODO: traffic_queue_1
+		rate = event.value.v;
 		osMutexRelease(traffic_rate_mutexHandle);
 		// turn red LED on
-		light_status = 0;
+		osMutexWait(light_status_mutexHandle, osWaitForever);
+		osMessagePut(light_status_queueHandle, 0, osWaitForever);
+		osMutexRelease(light_status_mutexHandle);
+		// light_status = 0;
 		// modulate traffic rate to 1
 		osDelay(3000 + 3000 * rate);
 	}
@@ -558,13 +593,15 @@ void SysManage(void const * argument)
   /* USER CODE BEGIN SysManage */
 	/* Infinite loop */
 	int i;
+	int cars[16];
 	for(;;)
 	{
-		osMutexWait(light_status_mutexHandle);
-		light_colour = light_state; // this should be a constant
+		osMutexWait(light_status_mutexHandle, osWaitForever);
+		osEvent event = osMessageGet(light_status_queueHandle, osWaitForever); //TODO: light_queue_0
+		int light_colour = event.value.v;
 		osMutexRelease(light_status_mutexHandle);
 
-		osMutexWait(cars_array_mutexHandle);
+		// osMutexWait(cars_array_mutexHandle); //TODO: cars_queue_0
 		for (i = 15; i>0; i--){
 			if (light_colour == 2) { //green
 				cars[i] = cars[i-1];
@@ -601,6 +638,10 @@ void SysManage(void const * argument)
 		else {
 			cars[0] = 0;
 		}
+		// osMutexRelease(cars_array_mutexHandle);
+		osMutexWait(cars_array_mutexHandle, osWaitForever);
+		// int* mail = (int *)osMailAlloc(cars_array_queueHandle, osWaitForever);
+		osMailPut(cars_array_queueHandle, cars);
 		osMutexRelease(cars_array_mutexHandle);
 		osDelay(500);
 	}
