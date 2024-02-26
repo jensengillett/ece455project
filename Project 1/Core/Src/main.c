@@ -447,11 +447,26 @@ void TrafficGeneration(void const * argument)
 void AdjustFlow(void const * argument)
 {
   /* USER CODE BEGIN AdjustFlow */
+	int raw = 0;
+	float scaled = 0;
 	/* Infinite loop */
 	for(;;)
 	{
+		HAL_ADC_Start(&hadc1);
+		HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
+		raw = HAL_ADC_GetValue(&hadc1);
+		if(raw > 2400){
+			scaled = 1;
+		} else {
+			scaled = raw / 2400.0;
+		}
+		osMutexWait(traffic_rate_mutexHandle, osWaitForever);
+		osMessagePut(traffic_queue_1Handle, scaled, osWaitForever);
+		osMessagePut(traffic_queue_2Handle, scaled, osWaitForever);
+		osMutexRelease(traffic_rate_mutexHandle);
 		osDelay(1);
 	}
+
   /* USER CODE END AdjustFlow */
 }
 
