@@ -46,6 +46,9 @@ ADC_HandleTypeDef hadc1;
 
 SPI_HandleTypeDef hspi1;
 
+TIM_HandleTypeDef htim1;
+TIM_HandleTypeDef htim3;
+
 osThreadId defaultTaskHandle;
 osThreadId traffic_generatHandle;
 osThreadId adjust_flowHandle;
@@ -55,10 +58,17 @@ osMessageQId traffic_queue_1Handle;
 osMessageQId traffic_queue_2Handle;
 osMessageQId cars_array_queueHandle;
 osMessageQId light_status_queueHandle;
+osMessageQId car_timer_queueHandle;
+osMessageQId pot_timer_queueHandle;
+osMessageQId light_timer_queueHandle;
+osTimerId car_movement_timerHandle;
 osMutexId cars_array_mutexHandle;
 osMutexId traffic_rate_2_mutexHandle;
 osMutexId light_status_mutexHandle;
 osMutexId traffic_rate_1_mutexHandle;
+osMutexId car_timing_mutexHandle;
+osMutexId pot_timer_mutexHandle;
+osMutexId light_timer_mutexHandle;
 /* USER CODE BEGIN PV */
 int light_status;
 int cars[16];
@@ -71,11 +81,14 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_SPI1_Init(void);
 static void MX_ADC1_Init(void);
+static void MX_TIM1_Init(void);
+static void MX_TIM3_Init(void);
 void StartDefaultTask(void const * argument);
 void TrafficGeneration(void const * argument);
 void AdjustFlow(void const * argument);
 void LightState(void const * argument);
 void SysManage(void const * argument);
+void car_movement_callback(void const * argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -116,6 +129,8 @@ int main(void)
   MX_GPIO_Init();
   MX_SPI1_Init();
   MX_ADC1_Init();
+  MX_TIM1_Init();
+  MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */
@@ -137,6 +152,18 @@ int main(void)
   osMutexDef(traffic_rate_1_mutex);
   traffic_rate_1_mutexHandle = osMutexCreate(osMutex(traffic_rate_1_mutex));
 
+  /* definition and creation of car_timing_mutex */
+  osMutexDef(car_timing_mutex);
+  car_timing_mutexHandle = osMutexCreate(osMutex(car_timing_mutex));
+
+  /* definition and creation of pot_timer_mutex */
+  osMutexDef(pot_timer_mutex);
+  pot_timer_mutexHandle = osMutexCreate(osMutex(pot_timer_mutex));
+
+  /* definition and creation of light_timer_mutex */
+  osMutexDef(light_timer_mutex);
+  light_timer_mutexHandle = osMutexCreate(osMutex(light_timer_mutex));
+
   /* USER CODE BEGIN RTOS_MUTEX */
 	/* add mutexes, ... */
   /* USER CODE END RTOS_MUTEX */
@@ -144,6 +171,11 @@ int main(void)
   /* USER CODE BEGIN RTOS_SEMAPHORES */
 	/* add semaphores, ... */
   /* USER CODE END RTOS_SEMAPHORES */
+
+  /* Create the timer(s) */
+  /* definition and creation of car_movement_timer */
+  osTimerDef(car_movement_timer, car_movement_callback);
+  car_movement_timerHandle = osTimerCreate(osTimer(car_movement_timer), osTimerPeriodic, NULL);
 
   /* USER CODE BEGIN RTOS_TIMERS */
 	/* start timers, add new ones, ... */
@@ -165,6 +197,18 @@ int main(void)
   /* definition and creation of light_status_queue */
   osMessageQDef(light_status_queue, 16, uint16_t);
   light_status_queueHandle = osMessageCreate(osMessageQ(light_status_queue), NULL);
+
+  /* definition and creation of car_timer_queue */
+  osMessageQDef(car_timer_queue, 16, uint16_t);
+  car_timer_queueHandle = osMessageCreate(osMessageQ(car_timer_queue), NULL);
+
+  /* definition and creation of pot_timer_queue */
+  osMessageQDef(pot_timer_queue, 16, uint16_t);
+  pot_timer_queueHandle = osMessageCreate(osMessageQ(pot_timer_queue), NULL);
+
+  /* definition and creation of light_timer_queue */
+  osMessageQDef(light_timer_queue, 16, uint16_t);
+  light_timer_queueHandle = osMessageCreate(osMessageQ(light_timer_queue), NULL);
 
   /* USER CODE BEGIN RTOS_QUEUES */
 	/* add queues, ... */
@@ -346,6 +390,97 @@ static void MX_SPI1_Init(void)
 }
 
 /**
+  * @brief TIM1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM1_Init(void)
+{
+
+  /* USER CODE BEGIN TIM1_Init 0 */
+
+  /* USER CODE END TIM1_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM1_Init 1 */
+
+  /* USER CODE END TIM1_Init 1 */
+  htim1.Instance = TIM1;
+  htim1.Init.Prescaler = 9999;
+  htim1.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim1.Init.Period = 8599;
+  htim1.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim1.Init.RepetitionCounter = 0;
+  htim1.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim1, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim1, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM1_Init 2 */
+
+  /* USER CODE END TIM1_Init 2 */
+
+}
+
+/**
+  * @brief TIM3 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM3_Init(void)
+{
+
+  /* USER CODE BEGIN TIM3_Init 0 */
+
+  /* USER CODE END TIM3_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM3_Init 1 */
+
+  /* USER CODE END TIM3_Init 1 */
+  htim3.Instance = TIM3;
+  htim3.Init.Prescaler = 8599;
+  htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim3.Init.Period = 9999;
+  htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim3, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM3_Init 2 */
+
+  /* USER CODE END TIM3_Init 2 */
+
+}
+
+/**
   * @brief GPIO Initialization Function
   * @param None
   * @retval None
@@ -456,6 +591,12 @@ void AdjustFlow(void const * argument)
 	/* Infinite loop */
 	for(;;)
 	{
+		osMutexWait(pot_timer_mutexHandle, osWaitForever);
+		osEvent event = osMessageGet(pot_timer_queueHandle, 0);
+		osMutexRelease(pot_timer_mutexHandle);
+		if(event.status != osEventMessage){
+			continue;
+		}
 		HAL_ADC_Start(&hadc1);
 		HAL_ADC_PollForConversion(&hadc1, HAL_MAX_DELAY);
 		raw = HAL_ADC_GetValue(&hadc1);
@@ -471,7 +612,7 @@ void AdjustFlow(void const * argument)
 		osMessageGet(traffic_queue_2Handle, 0);
 		osMessagePut(traffic_queue_2Handle, raw, osWaitForever);
 		osMutexRelease(traffic_rate_2_mutexHandle);
-		osDelay(1);
+		// osDelay(1);
 	}
 
   /* USER CODE END AdjustFlow */
@@ -508,6 +649,8 @@ void LightState(void const * argument)
   /* USER CODE BEGIN LightState */
 	uint16_t rate = 0;
 	float scaled = 0;
+	int scale_cap = 1;
+	int scale_count = 0;
 	/* Infinite loop */
 	for(;;)
 	{
@@ -529,7 +672,22 @@ void LightState(void const * argument)
 		osMutexRelease(light_status_mutexHandle);
 		// light_status = 2; //TODO: light_queue_0
 		// modulate traffic rate to 1
-		osDelay((uint32_t)(3000 + 3000 * scaled));
+		// osDelay((uint32_t)(3000 + 3000 * scaled));
+		scale_cap = (int)(3000 + 3000 * scaled)/500;
+		osMutexWait(light_timer_mutexHandle, osWaitForever);
+		event = osMessageGet(light_timer_queueHandle, 0);
+		osMutexRelease(pot_timer_mutexHandle);
+		while(scale_count < scale_cap){
+			if (event.status == osEventMessage){
+				scale_count ++;
+			}
+			else {
+				scale_count = 0;
+			}
+			osMutexWait(light_timer_mutexHandle, osWaitForever);
+			event = osMessageGet(light_timer_queueHandle, 0);
+			osMutexRelease(light_timer_mutexHandle);
+		}
 
 		// turn yellow LED on
 		HAL_GPIO_WritePin(GPIOC, Red_Light_Pin, GPIO_PIN_RESET);
@@ -540,7 +698,21 @@ void LightState(void const * argument)
 		osMessagePut(light_status_queueHandle, 1, osWaitForever);
 		osMutexRelease(light_status_mutexHandle);
 		// light_status = 1;
-		osDelay(1000);
+		scale_cap = 2;
+		osMutexWait(light_timer_mutexHandle, osWaitForever);
+		event = osMessageGet(light_timer_queueHandle, 0);
+		osMutexRelease(pot_timer_mutexHandle);
+		while(scale_count < scale_cap){
+			if (event.status == osEventMessage){
+				scale_count ++;
+			}
+			else {
+				scale_count = 0;
+			}
+			osMutexWait(light_timer_mutexHandle, osWaitForever);
+			event = osMessageGet(light_timer_queueHandle, 0);
+			osMutexRelease(pot_timer_mutexHandle);
+		}
 
 		osMutexWait(traffic_rate_2_mutexHandle, osWaitForever);
 		event = osMessageGet(traffic_queue_2Handle, 0); //TODO: traffic_queue_1
@@ -559,7 +731,22 @@ void LightState(void const * argument)
 		osMutexRelease(light_status_mutexHandle);
 		// light_status = 0;
 		// modulate traffic rate to 1
-		osDelay((uint32_t)(3000 + 3000 * (1-scaled)));
+		// osDelay((uint32_t)(3000 + 3000 * (1-scaled)));
+		scale_cap = (int)(3000 + 3000 * (1 - scaled))/500;
+		osMutexWait(light_timer_mutexHandle, osWaitForever);
+		event = osMessageGet(light_timer_queueHandle, 0);
+		osMutexRelease(pot_timer_mutexHandle);
+		while(scale_count < scale_cap){
+			if (event.status == osEventMessage){
+				scale_count ++;
+			}
+			else {
+				scale_count = 0;
+			}
+			osMutexWait(light_timer_mutexHandle, osWaitForever);
+			event = osMessageGet(light_timer_queueHandle, 0);
+			osMutexRelease(pot_timer_mutexHandle);
+		}
 	}
   /* USER CODE END LightState */
 }
@@ -590,8 +777,15 @@ void SysManage(void const * argument)
 	int light_colour = 0;
 	for(;;)
 	{
+		osMutexWait(car_timing_mutexHandle, osWaitForever);
+		osEvent event = osMessageGet(car_timer_queueHandle, 0);
+		osMutexRelease(car_timing_mutexHandle);
+		if(event.status != osEventMessage){
+			continue;
+		}
+
 		osMutexWait(light_status_mutexHandle, osWaitForever);
-		osEvent event = osMessageGet(light_status_queueHandle, 0); //TODO: light_queue_0
+		event = osMessageGet(light_status_queueHandle, 0); //TODO: light_queue_0
 		if(event.status == osEventMessage){
 			light_colour = event.value.v;
 		}
@@ -656,9 +850,48 @@ void SysManage(void const * argument)
 			HAL_GPIO_WritePin(GPIOC, Shift_Reg_Data_Pin, GPIO_PIN_RESET);
 			//osDelay(1);
 		}
-		osDelay(500);
+		// osDelay(500);
 	}
   /* USER CODE END SysManage */
+}
+
+/* car_movement_callback function */
+void car_movement_callback(void const * argument)
+{
+  /* USER CODE BEGIN car_movement_callback */
+	osMutexWait(car_timing_mutexHandle, osWaitForever);
+	osMutexWait(pot_timer_mutexHandle, osWaitForever);
+	osMutexWait(light_timer_mutexHandle, osWaitForever);
+
+	osMessagePut(car_timer_queueHandle, 1, osWaitForever);
+	osMessagePut(pot_timer_queueHandle, 1, osWaitForever);
+	osMessagePut(light_timer_queueHandle, 1, osWaitForever);
+
+	osMutexRelease(light_timer_mutexHandle);
+	osMutexRelease(pot_timer_mutexHandle);
+	osMutexRelease(car_timing_mutexHandle);
+  /* USER CODE END car_movement_callback */
+}
+
+/**
+  * @brief  Period elapsed callback in non blocking mode
+  * @note   This function is called  when TIM4 interrupt took place, inside
+  * HAL_TIM_IRQHandler(). It makes a direct call to HAL_IncTick() to increment
+  * a global variable "uwTick" used as application time base.
+  * @param  htim : TIM handle
+  * @retval None
+  */
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+  /* USER CODE BEGIN Callback 0 */
+
+  /* USER CODE END Callback 0 */
+  if (htim->Instance == TIM4) {
+    HAL_IncTick();
+  }
+  /* USER CODE BEGIN Callback 1 */
+
+  /* USER CODE END Callback 1 */
 }
 
 /**
