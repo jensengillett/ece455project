@@ -774,6 +774,7 @@ void SysManage(void const * argument)
 	/* Infinite loop */
 	int i;
 	int cars[19] = {};
+	int cars_padded[21] = {};
 	int light_colour = 0;
 	for(;;)
 	{
@@ -835,12 +836,25 @@ void SysManage(void const * argument)
 		//osMailPut(cars_array_queueHandle, cars);
 		//osMessagePut(cars_array_queueHandle, cars_int, osWaitForever);
 		//osMutexRelease(cars_array_mutexHandle);
+
+		// Pad the shift registers with extra data in the 8th bit for each.
+		for(i = 0; i < 19; i++){
+			if(i >= 14){
+				cars_padded[i+2] = cars[i];
+			} else if(i >= 7){
+				cars_padded[i+1] = cars[i];
+			} else {
+				cars_padded[i] = cars[i];
+			}
+		}
+
 		HAL_GPIO_WritePin(GPIOC, Shift_Reg_Reset_Pin, GPIO_PIN_RESET);
 		osDelay(1);
 		HAL_GPIO_WritePin(GPIOC, Shift_Reg_Reset_Pin, GPIO_PIN_SET);
 		//osDelay(1);
-		for(i = 18; i >= 0; i--){
-			if(cars[i] != 0){
+		for(i =20; i >= 0; i--){
+
+			if(cars_padded[i] != 0){
 				HAL_GPIO_WritePin(GPIOC, Shift_Reg_Data_Pin, GPIO_PIN_SET);
 			}
 			//osDelay(1);
@@ -871,6 +885,27 @@ void car_movement_callback(void const * argument)
 	osMutexRelease(pot_timer_mutexHandle);
 	osMutexRelease(car_timing_mutexHandle);
   /* USER CODE END car_movement_callback */
+}
+
+/**
+  * @brief  Period elapsed callback in non blocking mode
+  * @note   This function is called  when TIM4 interrupt took place, inside
+  * HAL_TIM_IRQHandler(). It makes a direct call to HAL_IncTick() to increment
+  * a global variable "uwTick" used as application time base.
+  * @param  htim : TIM handle
+  * @retval None
+  */
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
+{
+  /* USER CODE BEGIN Callback 0 */
+
+  /* USER CODE END Callback 0 */
+  if (htim->Instance == TIM4) {
+    HAL_IncTick();
+  }
+  /* USER CODE BEGIN Callback 1 */
+
+  /* USER CODE END Callback 1 */
 }
 
 /**
