@@ -50,7 +50,6 @@ TIM_HandleTypeDef htim1;
 TIM_HandleTypeDef htim3;
 
 osThreadId defaultTaskHandle;
-osThreadId traffic_generatHandle;
 osThreadId adjust_flowHandle;
 osThreadId light_stateHandle;
 osThreadId sys_manageHandle;
@@ -84,7 +83,6 @@ static void MX_ADC1_Init(void);
 static void MX_TIM1_Init(void);
 static void MX_TIM3_Init(void);
 void StartDefaultTask(void const * argument);
-void TrafficGeneration(void const * argument);
 void AdjustFlow(void const * argument);
 void LightState(void const * argument);
 void SysManage(void const * argument);
@@ -219,10 +217,6 @@ int main(void)
   osThreadDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 128);
   defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
 
-  /* definition and creation of traffic_generat */
-  osThreadDef(traffic_generat, TrafficGeneration, osPriorityIdle, 0, 128);
-  traffic_generatHandle = osThreadCreate(osThread(traffic_generat), NULL);
-
   /* definition and creation of adjust_flow */
   osThreadDef(adjust_flow, AdjustFlow, osPriorityIdle, 0, 128);
   adjust_flowHandle = osThreadCreate(osThread(adjust_flow), NULL);
@@ -236,6 +230,7 @@ int main(void)
   sys_manageHandle = osThreadCreate(osThread(sys_manage), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
+  osTimerStart(car_movement_timerHandle, 500);
 	/* add threads, ... */
   /* USER CODE END RTOS_THREADS */
 
@@ -559,24 +554,6 @@ void StartDefaultTask(void const * argument)
   /* USER CODE END 5 */
 }
 
-/* USER CODE BEGIN Header_TrafficGeneration */
-/**
- * @brief Function implementing the traffic_generat thread.
- * @param argument: Not used
- * @retval None
- */
-/* USER CODE END Header_TrafficGeneration */
-void TrafficGeneration(void const * argument)
-{
-  /* USER CODE BEGIN TrafficGeneration */
-	/* Infinite loop */
-	for(;;)
-	{
-		osDelay(1);
-	}
-  /* USER CODE END TrafficGeneration */
-}
-
 /* USER CODE BEGIN Header_AdjustFlow */
 /**
  * @brief Function implementing the adjust_flow thread.
@@ -624,25 +601,6 @@ void AdjustFlow(void const * argument)
  * @param argument: Not used
  * @retval None
  */
-int trafficGenerated(){
-	uint16_t traffic = 0;
-	float scaled = 0;
-	osMutexWait(traffic_rate_1_mutexHandle, osWaitForever);
-	//int traffic = traffic_rate; //TODO: traffic_queue_0
-	osEvent event = osMessageGet(traffic_queue_1Handle, 0);
-	if(event.status == osEventMessage){
-		traffic = event.value.v;
-	}
-	osMutexRelease(traffic_rate_1_mutexHandle);
-	scaled = traffic / 2400.0;
-	// modulate traffic rate from 1 to 10
-
-	float random = (float)(rand() % 10);
-	if (random < scaled*10) {
-		return 1;
-	}
-	return 0;
-}
 /* USER CODE END Header_LightState */
 void LightState(void const * argument)
 {
@@ -676,18 +634,16 @@ void LightState(void const * argument)
 		scale_cap = (int)(3000 + 3000 * scaled)/500;
 		osMutexWait(light_timer_mutexHandle, osWaitForever);
 		event = osMessageGet(light_timer_queueHandle, 0);
-		osMutexRelease(pot_timer_mutexHandle);
+		osMutexRelease(light_timer_mutexHandle);
 		while(scale_count < scale_cap){
 			if (event.status == osEventMessage){
 				scale_count ++;
-			}
-			else {
-				scale_count = 0;
 			}
 			osMutexWait(light_timer_mutexHandle, osWaitForever);
 			event = osMessageGet(light_timer_queueHandle, 0);
 			osMutexRelease(light_timer_mutexHandle);
 		}
+		scale_count = 0;
 
 		// turn yellow LED on
 		HAL_GPIO_WritePin(GPIOC, Red_Light_Pin, GPIO_PIN_RESET);
@@ -701,18 +657,16 @@ void LightState(void const * argument)
 		scale_cap = 2;
 		osMutexWait(light_timer_mutexHandle, osWaitForever);
 		event = osMessageGet(light_timer_queueHandle, 0);
-		osMutexRelease(pot_timer_mutexHandle);
+		osMutexRelease(light_timer_mutexHandle);
 		while(scale_count < scale_cap){
 			if (event.status == osEventMessage){
 				scale_count ++;
 			}
-			else {
-				scale_count = 0;
-			}
 			osMutexWait(light_timer_mutexHandle, osWaitForever);
 			event = osMessageGet(light_timer_queueHandle, 0);
-			osMutexRelease(pot_timer_mutexHandle);
+			osMutexRelease(light_timer_mutexHandle);
 		}
+		scale_count = 0;
 
 		osMutexWait(traffic_rate_2_mutexHandle, osWaitForever);
 		event = osMessageGet(traffic_queue_2Handle, 0); //TODO: traffic_queue_1
@@ -735,18 +689,16 @@ void LightState(void const * argument)
 		scale_cap = (int)(3000 + 3000 * (1 - scaled))/500;
 		osMutexWait(light_timer_mutexHandle, osWaitForever);
 		event = osMessageGet(light_timer_queueHandle, 0);
-		osMutexRelease(pot_timer_mutexHandle);
+		osMutexRelease(light_timer_mutexHandle);
 		while(scale_count < scale_cap){
 			if (event.status == osEventMessage){
 				scale_count ++;
 			}
-			else {
-				scale_count = 0;
-			}
 			osMutexWait(light_timer_mutexHandle, osWaitForever);
 			event = osMessageGet(light_timer_queueHandle, 0);
-			osMutexRelease(pot_timer_mutexHandle);
+			osMutexRelease(light_timer_mutexHandle);
 		}
+		scale_count = 0;
 	}
   /* USER CODE END LightState */
 }
@@ -767,6 +719,26 @@ int32_t convert_to_integer(int* traffic_array){
 	return converted_number;
 }
 
+int trafficGenerated(){
+	uint16_t traffic = 0;
+	float scaled = 0;
+	osMutexWait(traffic_rate_1_mutexHandle, osWaitForever);
+	//int traffic = traffic_rate; //TODO: traffic_queue_0
+	osEvent event = osMessageGet(traffic_queue_1Handle, 0);
+	if(event.status == osEventMessage){
+		traffic = event.value.v;
+	}
+	osMutexRelease(traffic_rate_1_mutexHandle);
+	scaled = traffic / 2400.0;
+	// modulate traffic rate from 1 to 10
+
+	float random = (float)(rand() % (6-(int)((1.0-scaled)*480)));
+	if (random <= 1) {
+		return 1;
+	}
+	return 0;
+}
+
 /* USER CODE END Header_SysManage */
 void SysManage(void const * argument)
 {
@@ -782,6 +754,7 @@ void SysManage(void const * argument)
 		osEvent event = osMessageGet(car_timer_queueHandle, 0);
 		osMutexRelease(car_timing_mutexHandle);
 		if(event.status != osEventMessage){
+			osDelay(1);
 			continue;
 		}
 
@@ -811,7 +784,7 @@ void SysManage(void const * argument)
 				}
 			}
 			else { //red
-				if (i > 11){
+				if (i > 8){
 					cars[i] = cars[i-1];
 					cars[i-1] = 0;
 				}
@@ -822,6 +795,18 @@ void SysManage(void const * argument)
 					}
 				}
 			}
+//			else {
+//				if (i > 8){
+//					cars[i] = cars[i-1];
+//				}
+//				else {
+//
+//					if (!cars[i]) {
+//						cars[i] = cars[i-1];
+//						cars[i-1] = 0;
+//					}
+//				}
+//			}
 		}
 		if (trafficGenerated()){
 			cars[0] = 1;
@@ -877,6 +862,7 @@ void car_movement_callback(void const * argument)
 	osMutexWait(pot_timer_mutexHandle, osWaitForever);
 	osMutexWait(light_timer_mutexHandle, osWaitForever);
 
+	osMessageGet(car_timer_queueHandle, 0);
 	osMessagePut(car_timer_queueHandle, 1, osWaitForever);
 	osMessagePut(pot_timer_queueHandle, 1, osWaitForever);
 	osMessagePut(light_timer_queueHandle, 1, osWaitForever);
@@ -885,27 +871,6 @@ void car_movement_callback(void const * argument)
 	osMutexRelease(pot_timer_mutexHandle);
 	osMutexRelease(car_timing_mutexHandle);
   /* USER CODE END car_movement_callback */
-}
-
-/**
-  * @brief  Period elapsed callback in non blocking mode
-  * @note   This function is called  when TIM4 interrupt took place, inside
-  * HAL_TIM_IRQHandler(). It makes a direct call to HAL_IncTick() to increment
-  * a global variable "uwTick" used as application time base.
-  * @param  htim : TIM handle
-  * @retval None
-  */
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
-{
-  /* USER CODE BEGIN Callback 0 */
-
-  /* USER CODE END Callback 0 */
-  if (htim->Instance == TIM4) {
-    HAL_IncTick();
-  }
-  /* USER CODE BEGIN Callback 1 */
-
-  /* USER CODE END Callback 1 */
 }
 
 /**
