@@ -732,8 +732,8 @@ int trafficGenerated(){
 	scaled = traffic / 2400.0;
 	// modulate traffic rate from 1 to 10
 
-	float random = (float)(rand() % (6-(int)((1.0-scaled)*480)));
-	if (random <= 1) {
+	float random = (float)(rand() % 10);
+	if (random < scaled*10) {
 		return 1;
 	}
 	return 0;
