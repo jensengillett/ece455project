@@ -524,16 +524,61 @@ void complete_dd_task(DD_TASK* task){
 
 }
 
-DD_TASK_LIST get_active_dd_task_list(){
+DD_TASK_LIST* get_active_dd_task_list(){
+	osMutexWait(dds_task_queue_mutexHandle, osWaitForever);
+	osMessagePut(dds_task_queueHandle, 0, osWaitForever);
+	osMutexRelease(dds_task_queue_mutexHandle);
 
+	osMutexWait(active_queue_mutexHandle, osWaitForever);
+	osEvent event = osMessageGet(active_queueHandle, 0);
+	osMutexRelease(active_queue_mutexHandle);
+	while(event.status != osEventMessage){
+		osMutexWait(active_queue_mutexHandle, osWaitForever);
+		event = osMessageGet(active_queueHandle, 0);
+		osMutexRelease(active_queue_mutexHandle);
+	}
+
+	//TODO: this might be a hack, fix if it causes problems
+	DD_TASK_LIST* active = (DD_TASK_LIST*)event.value.v;
+	return active;
 }
 
-DD_TASK_LIST get_completed_dd_task_list(){
+DD_TASK_LIST* get_completed_dd_task_list(){
+	osMutexWait(dds_task_queue_mutexHandle, osWaitForever);
+	osMessagePut(dds_task_queueHandle, 1, osWaitForever);
+	osMutexRelease(dds_task_queue_mutexHandle);
 
+	osMutexWait(completed_queue_mutexHandle, osWaitForever);
+	osEvent event = osMessageGet(completed_queueHandle, 0);
+	osMutexRelease(completed_queue_mutexHandle);
+	while(event.status != osEventMessage){
+		osMutexWait(completed_queue_mutexHandle, osWaitForever);
+		event = osMessageGet(completed_queueHandle, 0);
+		osMutexRelease(completed_queue_mutexHandle);
+	}
+
+	//TODO: this might be a hack, fix if it causes problems
+	DD_TASK_LIST* completed = (DD_TASK_LIST*)event.value.v;
+	return completed;
 }
 
-DD_TASK_LIST get_overdue_dd_task_list(){
+DD_TASK_LIST* get_overdue_dd_task_list(){
+	osMutexWait(dds_task_queue_mutexHandle, osWaitForever);
+	osMessagePut(dds_task_queueHandle, 0, osWaitForever);
+	osMutexRelease(dds_task_queue_mutexHandle);
 
+	osMutexWait(overdue_queue_mutexHandle, osWaitForever);
+	osEvent event = osMessageGet(overdue_queueHandle, 0);
+	osMutexRelease(overdue_queue_mutexHandle);
+	while(event.status != osEventMessage){
+		osMutexWait(overdue_queue_mutexHandle, osWaitForever);
+		event = osMessageGet(overdue_queueHandle, 0);
+		osMutexRelease(overdue_queue_mutexHandle);
+	}
+
+	//TODO: this might be a hack, fix if it causes problems
+	DD_TASK_LIST* overdue = (DD_TASK_LIST*)event.value.v;
+	return overdue;
 }
 /* USER CODE END 4 */
 
