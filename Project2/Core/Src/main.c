@@ -618,13 +618,15 @@ void Monitor(void const * argument)
 /* USER CODE END Header_RedLightTask */
 void RedLightTask(void const * argument)
 {
-  /* USER CODE BEGIN RedLightTask */
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
-  }
-  /* USER CODE END RedLightTask */
+	/* USER CODE BEGIN RedLightTask */
+	/* Infinite loop */
+	for(;;){
+		HAL_GPIO_WritePin(GPIOD, LD5_Pin, GPIO_PIN_SET);
+		osDelay(300);
+		HAL_GPIO_WritePin(GPIOD, LD5_Pin, GPIO_PIN_RESET);
+		osDelay(300);
+	}
+	/* USER CODE END RedLightTask */
 }
 
 /* USER CODE BEGIN Header_AmberLightTask */
@@ -636,13 +638,15 @@ void RedLightTask(void const * argument)
 /* USER CODE END Header_AmberLightTask */
 void AmberLightTask(void const * argument)
 {
-  /* USER CODE BEGIN AmberLightTask */
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
-  }
-  /* USER CODE END AmberLightTask */
+	/* USER CODE BEGIN AmberLightTask */
+	/* Infinite loop */
+	for(;;){
+		HAL_GPIO_WritePin(GPIOD, LD3_Pin, GPIO_PIN_SET);
+		osDelay(400);
+	  	HAL_GPIO_WritePin(GPIOD, LD3_Pin, GPIO_PIN_RESET);
+	  	osDelay(400);
+	}
+	/* USER CODE END AmberLightTask */
 }
 
 /* USER CODE BEGIN Header_GreenLightTask */
@@ -654,13 +658,15 @@ void AmberLightTask(void const * argument)
 /* USER CODE END Header_GreenLightTask */
 void GreenLightTask(void const * argument)
 {
-  /* USER CODE BEGIN GreenLightTask */
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
-  }
-  /* USER CODE END GreenLightTask */
+	/* USER CODE BEGIN GreenLightTask */
+	/* Infinite loop */
+	for(;;){
+		HAL_GPIO_WritePin(GPIOD, LD4_Pin, GPIO_PIN_SET);
+		osDelay(500);
+		HAL_GPIO_WritePin(GPIOD, LD4_Pin, GPIO_PIN_RESET);
+		osDelay(500);
+  	}
+	/* USER CODE END GreenLightTask */
 }
 
 /* dds_control_callback function */
