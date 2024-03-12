@@ -493,6 +493,41 @@ static void MX_GPIO_Init(void)
 
 /* USER CODE BEGIN 4 */
 
+typedef enum task_type {PERIODIC, APERIODIC} TASK_TYPE;
+
+typedef struct dd_task {
+     TaskHandle_t t_handle;
+     TASK_TYPE type;
+     uint32_t task_id;
+     uint32_t release_time;
+     uint32_t absolute_deadline;
+     uint32_t completion_time;
+} DD_TASK;
+
+typedef struct dd_task_list {
+    DD_TASK task;
+    struct dd_task_list* next_task;
+} DD_TASK_LIST;
+
+void release_dd_task(DD_TASK* task){
+
+}
+
+void complete_dd_task(DD_TASK* task){
+
+}
+
+DD_TASK_LIST get_active_dd_task_list(){
+
+}
+
+DD_TASK_LIST get_completed_dd_task_list(){
+
+}
+
+DD_TASK_LIST get_overdue_dd_task_list(){
+
+}
 /* USER CODE END 4 */
 
 /* USER CODE BEGIN Header_StartDefaultTask */
