@@ -59,10 +59,12 @@ osThreadId green_light_tasHandle;
 osMessageQId active_queueHandle;
 osMessageQId completed_queueHandle;
 osMessageQId overdue_queueHandle;
+osMessageQId dds_task_queueHandle;
 osTimerId dds_control_timerHandle;
 osMutexId active_queue_mutexHandle;
 osMutexId completed_queue_mutexHandle;
 osMutexId overdue_queue_mutexHandle;
+osMutexId dds_task_queue_mutexHandle;
 /* USER CODE BEGIN PV */
 
 /* USER CODE END PV */
@@ -89,7 +91,21 @@ void dds_control_callback(void const * argument);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+typedef enum task_type {PERIODIC, APERIODIC} TASK_TYPE;
 
+typedef struct dd_task {
+     TaskHandle_t t_handle;
+     TASK_TYPE type;
+     uint32_t task_id;
+     uint32_t release_time;
+     uint32_t absolute_deadline;
+     uint32_t completion_time;
+} DD_TASK;
+
+typedef struct dd_task_list {
+    DD_TASK task;
+    struct dd_task_list* next_task;
+} DD_TASK_LIST;
 /* USER CODE END 0 */
 
 /**
@@ -141,6 +157,10 @@ int main(void)
   osMutexDef(overdue_queue_mutex);
   overdue_queue_mutexHandle = osMutexCreate(osMutex(overdue_queue_mutex));
 
+  /* definition and creation of dds_task_queue_mutex */
+  osMutexDef(dds_task_queue_mutex);
+  dds_task_queue_mutexHandle = osMutexCreate(osMutex(dds_task_queue_mutex));
+
   /* USER CODE BEGIN RTOS_MUTEX */
   /* add mutexes, ... */
   /* USER CODE END RTOS_MUTEX */
@@ -160,16 +180,20 @@ int main(void)
 
   /* Create the queue(s) */
   /* definition and creation of active_queue */
-  osMessageQDef(active_queue, 16, uint16_t);
+  osMessageQDef(active_queue, 16, DD_TASK_LIST*);
   active_queueHandle = osMessageCreate(osMessageQ(active_queue), NULL);
 
   /* definition and creation of completed_queue */
-  osMessageQDef(completed_queue, 16, uint16_t);
+  osMessageQDef(completed_queue, 16, DD_TASK_LIST*);
   completed_queueHandle = osMessageCreate(osMessageQ(completed_queue), NULL);
 
   /* definition and creation of overdue_queue */
-  osMessageQDef(overdue_queue, 16, uint16_t);
+  osMessageQDef(overdue_queue, 16, DD_TASK_LIST*);
   overdue_queueHandle = osMessageCreate(osMessageQ(overdue_queue), NULL);
+
+  /* definition and creation of dds_task_queue */
+  osMessageQDef(dds_task_queue, 16, uint16_t);
+  dds_task_queueHandle = osMessageCreate(osMessageQ(dds_task_queue), NULL);
 
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
@@ -492,23 +516,6 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-
-typedef enum task_type {PERIODIC, APERIODIC} TASK_TYPE;
-
-typedef struct dd_task {
-     TaskHandle_t t_handle;
-     TASK_TYPE type;
-     uint32_t task_id;
-     uint32_t release_time;
-     uint32_t absolute_deadline;
-     uint32_t completion_time;
-} DD_TASK;
-
-typedef struct dd_task_list {
-    DD_TASK task;
-    struct dd_task_list* next_task;
-} DD_TASK_LIST;
-
 void release_dd_task(DD_TASK* task){
 
 }
