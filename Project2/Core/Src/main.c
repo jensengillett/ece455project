@@ -50,6 +50,19 @@ SPI_HandleTypeDef hspi1;
 HCD_HandleTypeDef hhcd_USB_OTG_FS;
 
 osThreadId defaultTaskHandle;
+osThreadId deadline_drivenHandle;
+osThreadId task_generatorHandle;
+osThreadId monitorHandle;
+osThreadId red_light_taskHandle;
+osThreadId amber_light_tasHandle;
+osThreadId green_light_tasHandle;
+osMessageQId active_queueHandle;
+osMessageQId completed_queueHandle;
+osMessageQId overdue_queueHandle;
+osTimerId dds_control_timerHandle;
+osMutexId active_queue_mutexHandle;
+osMutexId completed_queue_mutexHandle;
+osMutexId overdue_queue_mutexHandle;
 /* USER CODE BEGIN PV */
 
 /* USER CODE END PV */
@@ -62,6 +75,13 @@ static void MX_I2S3_Init(void);
 static void MX_SPI1_Init(void);
 static void MX_USB_OTG_FS_HCD_Init(void);
 void StartDefaultTask(void const * argument);
+void DeadlineDrivenScheduler(void const * argument);
+void TaskGenerator(void const * argument);
+void Monitor(void const * argument);
+void RedLightTask(void const * argument);
+void AmberLightTask(void const * argument);
+void GreenLightTask(void const * argument);
+void dds_control_callback(void const * argument);
 
 /* USER CODE BEGIN PFP */
 
@@ -108,6 +128,19 @@ int main(void)
 
   /* USER CODE END 2 */
 
+  /* Create the mutex(es) */
+  /* definition and creation of active_queue_mutex */
+  osMutexDef(active_queue_mutex);
+  active_queue_mutexHandle = osMutexCreate(osMutex(active_queue_mutex));
+
+  /* definition and creation of completed_queue_mutex */
+  osMutexDef(completed_queue_mutex);
+  completed_queue_mutexHandle = osMutexCreate(osMutex(completed_queue_mutex));
+
+  /* definition and creation of overdue_queue_mutex */
+  osMutexDef(overdue_queue_mutex);
+  overdue_queue_mutexHandle = osMutexCreate(osMutex(overdue_queue_mutex));
+
   /* USER CODE BEGIN RTOS_MUTEX */
   /* add mutexes, ... */
   /* USER CODE END RTOS_MUTEX */
@@ -116,9 +149,27 @@ int main(void)
   /* add semaphores, ... */
   /* USER CODE END RTOS_SEMAPHORES */
 
+  /* Create the timer(s) */
+  /* definition and creation of dds_control_timer */
+  osTimerDef(dds_control_timer, dds_control_callback);
+  dds_control_timerHandle = osTimerCreate(osTimer(dds_control_timer), osTimerPeriodic, NULL);
+
   /* USER CODE BEGIN RTOS_TIMERS */
   /* start timers, add new ones, ... */
   /* USER CODE END RTOS_TIMERS */
+
+  /* Create the queue(s) */
+  /* definition and creation of active_queue */
+  osMessageQDef(active_queue, 16, uint16_t);
+  active_queueHandle = osMessageCreate(osMessageQ(active_queue), NULL);
+
+  /* definition and creation of completed_queue */
+  osMessageQDef(completed_queue, 16, uint16_t);
+  completed_queueHandle = osMessageCreate(osMessageQ(completed_queue), NULL);
+
+  /* definition and creation of overdue_queue */
+  osMessageQDef(overdue_queue, 16, uint16_t);
+  overdue_queueHandle = osMessageCreate(osMessageQ(overdue_queue), NULL);
 
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
@@ -128,6 +179,30 @@ int main(void)
   /* definition and creation of defaultTask */
   osThreadDef(defaultTask, StartDefaultTask, osPriorityNormal, 0, 128);
   defaultTaskHandle = osThreadCreate(osThread(defaultTask), NULL);
+
+  /* definition and creation of deadline_driven */
+  osThreadDef(deadline_driven, DeadlineDrivenScheduler, osPriorityHigh, 0, 128);
+  deadline_drivenHandle = osThreadCreate(osThread(deadline_driven), NULL);
+
+  /* definition and creation of task_generator */
+  osThreadDef(task_generator, TaskGenerator, osPriorityIdle, 0, 128);
+  task_generatorHandle = osThreadCreate(osThread(task_generator), NULL);
+
+  /* definition and creation of monitor */
+  osThreadDef(monitor, Monitor, osPriorityIdle, 0, 128);
+  monitorHandle = osThreadCreate(osThread(monitor), NULL);
+
+  /* definition and creation of red_light_task */
+  osThreadDef(red_light_task, RedLightTask, osPriorityIdle, 0, 128);
+  red_light_taskHandle = osThreadCreate(osThread(red_light_task), NULL);
+
+  /* definition and creation of amber_light_tas */
+  osThreadDef(amber_light_tas, AmberLightTask, osPriorityIdle, 0, 128);
+  amber_light_tasHandle = osThreadCreate(osThread(amber_light_tas), NULL);
+
+  /* definition and creation of green_light_tas */
+  osThreadDef(green_light_tas, GreenLightTask, osPriorityIdle, 0, 128);
+  green_light_tasHandle = osThreadCreate(osThread(green_light_tas), NULL);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
@@ -436,6 +511,122 @@ void StartDefaultTask(void const * argument)
     osDelay(1);
   }
   /* USER CODE END 5 */
+}
+
+/* USER CODE BEGIN Header_DeadlineDrivenScheduler */
+/**
+* @brief Function implementing the deadline_driven thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_DeadlineDrivenScheduler */
+void DeadlineDrivenScheduler(void const * argument)
+{
+  /* USER CODE BEGIN DeadlineDrivenScheduler */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END DeadlineDrivenScheduler */
+}
+
+/* USER CODE BEGIN Header_TaskGenerator */
+/**
+* @brief Function implementing the task_generator thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_TaskGenerator */
+void TaskGenerator(void const * argument)
+{
+  /* USER CODE BEGIN TaskGenerator */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END TaskGenerator */
+}
+
+/* USER CODE BEGIN Header_Monitor */
+/**
+* @brief Function implementing the monitor thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_Monitor */
+void Monitor(void const * argument)
+{
+  /* USER CODE BEGIN Monitor */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END Monitor */
+}
+
+/* USER CODE BEGIN Header_RedLightTask */
+/**
+* @brief Function implementing the red_light_task thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_RedLightTask */
+void RedLightTask(void const * argument)
+{
+  /* USER CODE BEGIN RedLightTask */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END RedLightTask */
+}
+
+/* USER CODE BEGIN Header_AmberLightTask */
+/**
+* @brief Function implementing the amber_light_tas thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_AmberLightTask */
+void AmberLightTask(void const * argument)
+{
+  /* USER CODE BEGIN AmberLightTask */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END AmberLightTask */
+}
+
+/* USER CODE BEGIN Header_GreenLightTask */
+/**
+* @brief Function implementing the green_light_tas thread.
+* @param argument: Not used
+* @retval None
+*/
+/* USER CODE END Header_GreenLightTask */
+void GreenLightTask(void const * argument)
+{
+  /* USER CODE BEGIN GreenLightTask */
+  /* Infinite loop */
+  for(;;)
+  {
+    osDelay(1);
+  }
+  /* USER CODE END GreenLightTask */
+}
+
+/* dds_control_callback function */
+void dds_control_callback(void const * argument)
+{
+  /* USER CODE BEGIN dds_control_callback */
+
+  /* USER CODE END dds_control_callback */
 }
 
 /**
