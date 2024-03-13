@@ -624,16 +624,29 @@ void DeadlineDrivenScheduler(void const * argument)
 * @param argument: Not used
 * @retval None
 */
+uint8_t active_testbench = 1;  // 1-indexed, *not* 0-indexed
+uint32_t testbenches[3][3][2] = {
+		{{ 95,500}, {150,500}, {250,750}},
+		{{ 95,250}, {150,500}, {250,750}},
+		{{100,500}, {200,500}, {200,500}}
+};
+
 /* USER CODE END Header_TaskGenerator */
 void TaskGenerator(void const * argument)
 {
-  /* USER CODE BEGIN TaskGenerator */
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
-  }
-  /* USER CODE END TaskGenerator */
+	/* USER CODE BEGIN TaskGenerator */
+	/* Infinite loop */
+	for(;;){
+		uint32_t task_1_execution_time = 	testbenches[active_testbench-1][0][0];
+		uint32_t task_1_period = 			testbenches[active_testbench-1][0][1];
+		uint32_t task_2_execution_time = 	testbenches[active_testbench-1][1][0];
+		uint32_t task_2_period = 			testbenches[active_testbench-1][1][1];
+		uint32_t task_3_execution_time = 	testbenches[active_testbench-1][2][0];
+		uint32_t task_3_period = 			testbenches[active_testbench-1][2][1];
+
+
+	}
+	/* USER CODE END TaskGenerator */
 }
 
 /* USER CODE BEGIN Header_Monitor */
