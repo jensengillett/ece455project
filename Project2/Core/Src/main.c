@@ -58,7 +58,6 @@ osThreadId amber_light_tasHandle;
 osThreadId green_light_tasHandle;
 osMessageQId active_queueHandle;
 osMessageQId completed_queueHandle;
-osMessageQId overdue_queueHandle;
 osMessageQId dds_task_queueHandle;
 osTimerId dds_control_timerHandle;
 osMutexId active_queue_mutexHandle;
@@ -180,16 +179,12 @@ int main(void)
 
   /* Create the queue(s) */
   /* definition and creation of active_queue */
-  osMessageQDef(active_queue, 16, DD_TASK_LIST*);
+  osMessageQDef(active_queue, 16, DD_TASK_LIST);
   active_queueHandle = osMessageCreate(osMessageQ(active_queue), NULL);
 
   /* definition and creation of completed_queue */
-  osMessageQDef(completed_queue, 16, DD_TASK_LIST*);
+  osMessageQDef(completed_queue, 16, DD_TASK_LIST);
   completed_queueHandle = osMessageCreate(osMessageQ(completed_queue), NULL);
-
-  /* definition and creation of overdue_queue */
-  osMessageQDef(overdue_queue, 16, DD_TASK_LIST*);
-  overdue_queueHandle = osMessageCreate(osMessageQ(overdue_queue), NULL);
 
   /* definition and creation of dds_task_queue */
   osMessageQDef(dds_task_queue, 16, uint16_t);
@@ -516,8 +511,13 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-void release_dd_task(DD_TASK* task){
-
+void release_dd_task(DD_TASK* task){	// malloc here
+	osMutexWait(dds_task_queue_mutexHandle, osWaitForever);
+	osMutexWait(active_queue_mutexHandle, osWaitForever);
+	osMessagePut(dds_task_queueHandle, 3, osWaitForever);
+	osMessagePut(active_task_queueHandle, task, osWaitForever);
+	osMutexRelease(active_queue_mutexHandle);
+	osMutexRelease(dds_task_queue_mutexHandle);
 }
 
 void complete_dd_task(DD_TASK* task){
@@ -663,7 +663,7 @@ void Monitor(void const * argument)
 /* USER CODE END Header_RedLightTask */
 void RedLightTask(void const * argument)
 {
-	/* USER CODE BEGIN RedLightTask */
+  /* USER CODE BEGIN RedLightTask */
 	/* Infinite loop */
 	for(;;){
 		HAL_GPIO_WritePin(GPIOD, LD5_Pin, GPIO_PIN_SET);
@@ -671,7 +671,7 @@ void RedLightTask(void const * argument)
 		HAL_GPIO_WritePin(GPIOD, LD5_Pin, GPIO_PIN_RESET);
 		osDelay(300);
 	}
-	/* USER CODE END RedLightTask */
+  /* USER CODE END RedLightTask */
 }
 
 /* USER CODE BEGIN Header_AmberLightTask */
@@ -683,7 +683,7 @@ void RedLightTask(void const * argument)
 /* USER CODE END Header_AmberLightTask */
 void AmberLightTask(void const * argument)
 {
-	/* USER CODE BEGIN AmberLightTask */
+  /* USER CODE BEGIN AmberLightTask */
 	/* Infinite loop */
 	for(;;){
 		HAL_GPIO_WritePin(GPIOD, LD3_Pin, GPIO_PIN_SET);
@@ -691,7 +691,7 @@ void AmberLightTask(void const * argument)
 	  	HAL_GPIO_WritePin(GPIOD, LD3_Pin, GPIO_PIN_RESET);
 	  	osDelay(400);
 	}
-	/* USER CODE END AmberLightTask */
+  /* USER CODE END AmberLightTask */
 }
 
 /* USER CODE BEGIN Header_GreenLightTask */
@@ -703,7 +703,7 @@ void AmberLightTask(void const * argument)
 /* USER CODE END Header_GreenLightTask */
 void GreenLightTask(void const * argument)
 {
-	/* USER CODE BEGIN GreenLightTask */
+  /* USER CODE BEGIN GreenLightTask */
 	/* Infinite loop */
 	for(;;){
 		HAL_GPIO_WritePin(GPIOD, LD4_Pin, GPIO_PIN_SET);
@@ -711,7 +711,7 @@ void GreenLightTask(void const * argument)
 		HAL_GPIO_WritePin(GPIOD, LD4_Pin, GPIO_PIN_RESET);
 		osDelay(500);
   	}
-	/* USER CODE END GreenLightTask */
+  /* USER CODE END GreenLightTask */
 }
 
 /* dds_control_callback function */
