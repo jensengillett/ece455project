@@ -66,7 +66,9 @@ osMutexId completed_queue_mutexHandle;
 osMutexId overdue_queue_mutexHandle;
 osMutexId dds_task_queue_mutexHandle;
 /* USER CODE BEGIN PV */
-
+osTimerId task_1_timerHandle;
+osTimerId task_2_timerHandle;
+osTimerId task_3_timerHandle;
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -86,7 +88,9 @@ void GreenLightTask(void const * argument);
 void dds_control_callback(void const * argument);
 
 /* USER CODE BEGIN PFP */
-
+void task_1_timer_callback(void const * argument);
+void task_2_timer_callback(void const * argument);
+void task_3_timer_callback(void const * argument);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -175,7 +179,7 @@ int main(void)
   dds_control_timerHandle = osTimerCreate(osTimer(dds_control_timer), osTimerPeriodic, NULL);
 
   /* USER CODE BEGIN RTOS_TIMERS */
-  /* start timers, add new ones, ... */
+
   /* USER CODE END RTOS_TIMERS */
 
   /* Create the queue(s) */
@@ -218,18 +222,23 @@ int main(void)
 
   /* definition and creation of red_light_task */
   osThreadDef(red_light_task, RedLightTask, osPriorityIdle, 0, 128);
-  red_light_taskHandle = osThreadCreate(osThread(red_light_task), NULL);
+  red_light_taskHandle = osThreadCreate(osThread(red_light_task), (void*) 0);
 
   /* definition and creation of amber_light_tas */
   osThreadDef(amber_light_tas, AmberLightTask, osPriorityIdle, 0, 128);
-  amber_light_tasHandle = osThreadCreate(osThread(amber_light_tas), NULL);
+  amber_light_tasHandle = osThreadCreate(osThread(amber_light_tas), (void*) 0);
 
   /* definition and creation of green_light_tas */
   osThreadDef(green_light_tas, GreenLightTask, osPriorityIdle, 0, 128);
-  green_light_tasHandle = osThreadCreate(osThread(green_light_tas), NULL);
+  green_light_tasHandle = osThreadCreate(osThread(green_light_tas), (void*) 0);
 
   /* USER CODE BEGIN RTOS_THREADS */
   /* add threads, ... */
+  // We don't actually want the light tasks to run immediately, so end the threads.
+  osThreadTerminate(red_light_taskHandle);
+  osThreadTerminate(amber_light_tasHandle);
+  osThreadTerminate(green_light_tasHandle);
+
   /* USER CODE END RTOS_THREADS */
 
   /* Start scheduler */
@@ -609,11 +618,7 @@ DD_TASK_LIST* get_overdue_dd_task_list(){
 void StartDefaultTask(void const * argument)
 {
   /* USER CODE BEGIN 5 */
-  /* Infinite loop */
-  for(;;)
-  {
-    osDelay(1);
-  }
+  // Don't do anything and just let the task die.
   /* USER CODE END 5 */
 }
 
@@ -641,28 +646,40 @@ void DeadlineDrivenScheduler(void const * argument)
 * @param argument: Not used
 * @retval None
 */
-uint8_t active_testbench = 1;  // 1-indexed, *not* 0-indexed
-uint32_t testbenches[3][3][2] = {
-		{{ 95,500}, {150,500}, {250,750}},
-		{{ 95,250}, {150,500}, {250,750}},
-		{{100,500}, {200,500}, {200,500}}
-};
-
 /* USER CODE END Header_TaskGenerator */
 void TaskGenerator(void const * argument)
 {
   /* USER CODE BEGIN TaskGenerator */
-	/* Infinite loop */
-	for(;;){
-		uint32_t task_1_execution_time = 	testbenches[active_testbench-1][0][0];
-		uint32_t task_1_period = 			testbenches[active_testbench-1][0][1];
-		uint32_t task_2_execution_time = 	testbenches[active_testbench-1][1][0];
-		uint32_t task_2_period = 			testbenches[active_testbench-1][1][1];
-		uint32_t task_3_execution_time = 	testbenches[active_testbench-1][2][0];
-		uint32_t task_3_period = 			testbenches[active_testbench-1][2][1];
+	uint8_t active_testbench = 0;  // 0-indexed
+	uint32_t testbenches[3][3][2] = {
+			{{ 95,500}, {150,500}, {250,750}},
+			{{ 95,250}, {150,500}, {250,750}},
+			{{100,500}, {200,500}, {200,500}}
+	};
 
+	uint32_t task_1_execution_time = 	testbenches[active_testbench][0][0];
+	uint32_t task_1_period = 			testbenches[active_testbench][0][1];
+	uint32_t task_2_execution_time = 	testbenches[active_testbench][1][0];
+	uint32_t task_2_period = 			testbenches[active_testbench][1][1];
+	uint32_t task_3_execution_time = 	testbenches[active_testbench][2][0];
+	uint32_t task_3_period = 			testbenches[active_testbench][2][1];
 
-	}
+	/* definition and creation of task_1_timer */
+	osTimerDef(task_1_timer, task_1_timer_callback);
+	task_1_timerHandle = osTimerCreate(osTimer(task_1_timer), osTimerPeriodic, (void*)task_1_execution_time);
+
+	/* definition and creation of task_2_timer */
+	osTimerDef(task_2_timer, task_2_timer_callback);
+	task_2_timerHandle = osTimerCreate(osTimer(task_2_timer), osTimerPeriodic, (void*)task_2_execution_time);
+
+	/* definition and creation of task_3_timer */
+	osTimerDef(task_3_timer, task_3_timer_callback);
+	task_3_timerHandle = osTimerCreate(osTimer(task_3_timer), osTimerPeriodic, (void*)task_3_execution_time);
+
+	osTimerStart(task_1_timerHandle, task_1_period);
+	osTimerStart(task_2_timerHandle, task_2_period);
+	osTimerStart(task_3_timerHandle, task_3_period);
+
   /* USER CODE END TaskGenerator */
 }
 
@@ -685,6 +702,31 @@ void Monitor(void const * argument)
 }
 
 /* USER CODE BEGIN Header_RedLightTask */
+
+/* task_1_timer_callback function */
+void task_1_timer_callback(void const * argument)
+{
+  /* USER CODE BEGIN task_1_timer_callback */
+
+  /* USER CODE END task_1_timer_callback */
+}
+
+/* task_2_timer_callback function */
+void task_2_timer_callback(void const * argument)
+{
+  /* USER CODE BEGIN task_2_timer_callback */
+
+  /* USER CODE END task_2_timer_callback */
+}
+
+/* task_3_timer_callback function */
+void task_3_timer_callback(void const * argument)
+{
+  /* USER CODE BEGIN task_3_timer_callback */
+
+  /* USER CODE END task_3_timer_callback */
+}
+
 /**
 * @brief Function implementing the red_light_task thread.
 * @param argument: Not used
@@ -694,13 +736,11 @@ void Monitor(void const * argument)
 void RedLightTask(void const * argument)
 {
   /* USER CODE BEGIN RedLightTask */
-	/* Infinite loop */
-	for(;;){
-		HAL_GPIO_WritePin(GPIOD, LD5_Pin, GPIO_PIN_SET);
-		osDelay(300);
-		HAL_GPIO_WritePin(GPIOD, LD5_Pin, GPIO_PIN_RESET);
-		osDelay(300);
-	}
+	int time = (int)&argument;
+	HAL_GPIO_WritePin(GPIOD, LD5_Pin, GPIO_PIN_SET);
+	osDelay(time/2);
+	HAL_GPIO_WritePin(GPIOD, LD5_Pin, GPIO_PIN_RESET);
+	osDelay(time/2);
   /* USER CODE END RedLightTask */
 }
 
@@ -714,13 +754,11 @@ void RedLightTask(void const * argument)
 void AmberLightTask(void const * argument)
 {
   /* USER CODE BEGIN AmberLightTask */
-	/* Infinite loop */
-	for(;;){
-		HAL_GPIO_WritePin(GPIOD, LD3_Pin, GPIO_PIN_SET);
-		osDelay(400);
-	  	HAL_GPIO_WritePin(GPIOD, LD3_Pin, GPIO_PIN_RESET);
-	  	osDelay(400);
-	}
+	int time = (int)&argument;
+	HAL_GPIO_WritePin(GPIOD, LD3_Pin, GPIO_PIN_SET);
+	osDelay(time/2);
+	HAL_GPIO_WritePin(GPIOD, LD3_Pin, GPIO_PIN_RESET);
+	osDelay(time/2);
   /* USER CODE END AmberLightTask */
 }
 
@@ -734,13 +772,11 @@ void AmberLightTask(void const * argument)
 void GreenLightTask(void const * argument)
 {
   /* USER CODE BEGIN GreenLightTask */
-	/* Infinite loop */
-	for(;;){
-		HAL_GPIO_WritePin(GPIOD, LD4_Pin, GPIO_PIN_SET);
-		osDelay(500);
-		HAL_GPIO_WritePin(GPIOD, LD4_Pin, GPIO_PIN_RESET);
-		osDelay(500);
-  	}
+	int time = (int)&argument;
+	HAL_GPIO_WritePin(GPIOD, LD4_Pin, GPIO_PIN_SET);
+	osDelay(time/2);
+	HAL_GPIO_WritePin(GPIOD, LD4_Pin, GPIO_PIN_RESET);
+	osDelay(time/2);
   /* USER CODE END GreenLightTask */
 }
 
