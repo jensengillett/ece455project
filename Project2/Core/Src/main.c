@@ -516,11 +516,23 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-void release_dd_task(DD_TASK* task){	// malloc here
+void release_dd_task(TaskHandle_t t_handle, TASK_TYPE type, uint32_t task_id,uint32_t absolute_deadline){
+	// malloc here
+	DD_TASK_LIST task = (DD_TASK_LIST){
+			.task = (DD_TASK){
+			     .t_handle = t_handle,
+			     .type = type,
+			     .task_id = task_id,
+			     .release_time = 0,
+			     .absolute_deadline = absolute_deadline,
+			     .completion_time = 0
+			},
+			.next_task = NULL
+	};
 	osMutexWait(dds_task_queue_mutexHandle, osWaitForever);
 	osMutexWait(active_queue_mutexHandle, osWaitForever);
 	osMessagePut(dds_task_queueHandle, 3, osWaitForever);
-	osMessagePut(active_queueHandle, task, osWaitForever);
+	osMessagePut(active_queueHandle, (int)&task, osWaitForever);
 	osMutexRelease(active_queue_mutexHandle);
 	osMutexRelease(dds_task_queue_mutexHandle);
 }
