@@ -59,6 +59,7 @@ osThreadId green_light_tasHandle;
 osMessageQId active_queueHandle;
 osMessageQId completed_queueHandle;
 osMessageQId dds_task_queueHandle;
+osMessageQId overdue_queueHandle;
 osTimerId dds_control_timerHandle;
 osMutexId active_queue_mutexHandle;
 osMutexId completed_queue_mutexHandle;
@@ -189,6 +190,10 @@ int main(void)
   /* definition and creation of dds_task_queue */
   osMessageQDef(dds_task_queue, 16, uint16_t);
   dds_task_queueHandle = osMessageCreate(osMessageQ(dds_task_queue), NULL);
+
+  /* definition and creation of overdue_queue */
+  osMessageQDef(overdue_queue, 16, DD_TASK_LIST);
+  overdue_queueHandle = osMessageCreate(osMessageQ(overdue_queue), NULL);
 
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
@@ -515,7 +520,7 @@ void release_dd_task(DD_TASK* task){	// malloc here
 	osMutexWait(dds_task_queue_mutexHandle, osWaitForever);
 	osMutexWait(active_queue_mutexHandle, osWaitForever);
 	osMessagePut(dds_task_queueHandle, 3, osWaitForever);
-	osMessagePut(active_task_queueHandle, task, osWaitForever);
+	osMessagePut(active_queueHandle, task, osWaitForever);
 	osMutexRelease(active_queue_mutexHandle);
 	osMutexRelease(dds_task_queue_mutexHandle);
 }
@@ -634,7 +639,7 @@ uint32_t testbenches[3][3][2] = {
 /* USER CODE END Header_TaskGenerator */
 void TaskGenerator(void const * argument)
 {
-	/* USER CODE BEGIN TaskGenerator */
+  /* USER CODE BEGIN TaskGenerator */
 	/* Infinite loop */
 	for(;;){
 		uint32_t task_1_execution_time = 	testbenches[active_testbench-1][0][0];
@@ -646,7 +651,7 @@ void TaskGenerator(void const * argument)
 
 
 	}
-	/* USER CODE END TaskGenerator */
+  /* USER CODE END TaskGenerator */
 }
 
 /* USER CODE BEGIN Header_Monitor */
