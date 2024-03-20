@@ -702,11 +702,13 @@ void StartDefaultTask(void const * argument)
 /* USER CODE END Header_DeadlineDrivenScheduler */
 void DeadlineDrivenScheduler(void const * argument)
 {
+  /* USER CODE BEGIN DeadlineDrivenScheduler */
+	osEvent event;
 	DD_TASK_LIST* active_tasks = NULL;
 	DD_TASK_LIST* completed_tasks = NULL;
 	DD_TASK_LIST* overdue_tasks = NULL;
-	osEvent event;
-  /* USER CODE BEGIN DeadlineDrivenScheduler */
+	DD_TASK_LIST* counter;
+	DD_TASK_LIST* new_task;
   /* Infinite loop */
   for(;;)
   {
@@ -716,7 +718,18 @@ void DeadlineDrivenScheduler(void const * argument)
 		osMutexRelease(make_active_queue_mutexHandle);
 
 		if(event.status == osEventMessage){
-			// add new task to proper place in active queue
+			if (active_tasks == NULL){
+				active_tasks = (DD_TASK_LIST*) event.value.v;
+			}
+			else {
+				new_task = (DD_TASK_LIST*) event.value.v;
+				counter = active_tasks;
+				while(counter->next != NULL && counter->task.absolute_deadline <= new_task->task.absolute_deadline){
+					counter = counter->next;
+				}
+				new_task->next = counter->next;
+				counter->next = new_task;
+			}
 		}
 	  // Complete DD Task
 		osMutexWait(make_completed_queue_mutexHandle, osWaitForever);
@@ -724,9 +737,38 @@ void DeadlineDrivenScheduler(void const * argument)
 		osMutexRelease(make_completed_queue_mutexHandle);
 
 		if(event.status == osEventMessage){
-			// put task into completed queue
-			// start new task
+			if (completed_tasks == NULL){
+				completed_tasks = (DD_TASK_LIST*) event.value.v;
+			}
+			else {
+				new_task = (DD_TASK_LIST*) event.value.v;
+				counter = completed_tasks;
+				while(counter->next != NULL){
+					counter = counter->next;
+				}
+				counter->next = new_task;
+			}
+			// set task priority to high
+			vTaskPrioritySet(active_tasks->task.t_handle, 256);
 			// put overdue tasks away
+
+			osMutexWait(make_overdue_queue_mutexHandle, osWaitForever);
+			event = osMessageGet(make_overdue_queueHandle, 0);
+			osMutexRelease(make_overdue_queue_mutexHandle);
+
+			if (event.status == osEventMessage){
+				if (overdue_tasks == NULL){
+					overdue_tasks = (DD_TASK_LIST*) event.value.v;
+				}
+				else {
+					new_task = (DD_TASK_LIST*) event.value.v;
+					counter = overdue_tasks;
+					while(counter->next != NULL){
+						counter = counter->next;
+					}
+					counter->next = new_task;
+				}
+			}
 		}
 	  // Get Lists
 		osMutexWait(dds_task_queue_mutexHandle, osWaitForever);
