@@ -60,11 +60,17 @@ osMessageQId active_queueHandle;
 osMessageQId completed_queueHandle;
 osMessageQId dds_task_queueHandle;
 osMessageQId overdue_queueHandle;
+osMessageQId make_active_queueHandle;
+osMessageQId make_completed_queueHandle;
+osMessageQId make_overdue_queueHandle;
 osTimerId dds_control_timerHandle;
 osMutexId active_queue_mutexHandle;
 osMutexId completed_queue_mutexHandle;
 osMutexId overdue_queue_mutexHandle;
 osMutexId dds_task_queue_mutexHandle;
+osMutexId make_active_queue_mutexHandle;
+osMutexId make_completed_queue_mutexHandle;
+osMutexId make_overdue_queue_mutexHandle;
 /* USER CODE BEGIN PV */
 osTimerId task_1_timerHandle;
 osTimerId task_2_timerHandle;
@@ -108,7 +114,7 @@ typedef struct dd_task {
 
 typedef struct dd_task_list {
     DD_TASK task;
-    struct dd_task_list* next_task;
+    struct dd_task_list* next;
 } DD_TASK_LIST;
 /* USER CODE END 0 */
 
@@ -165,6 +171,18 @@ int main(void)
   osMutexDef(dds_task_queue_mutex);
   dds_task_queue_mutexHandle = osMutexCreate(osMutex(dds_task_queue_mutex));
 
+  /* definition and creation of make_active_queue_mutex */
+  osMutexDef(make_active_queue_mutex);
+  make_active_queue_mutexHandle = osMutexCreate(osMutex(make_active_queue_mutex));
+
+  /* definition and creation of make_completed_queue_mutex */
+  osMutexDef(make_completed_queue_mutex);
+  make_completed_queue_mutexHandle = osMutexCreate(osMutex(make_completed_queue_mutex));
+
+  /* definition and creation of make_overdue_queue_mutex */
+  osMutexDef(make_overdue_queue_mutex);
+  make_overdue_queue_mutexHandle = osMutexCreate(osMutex(make_overdue_queue_mutex));
+
   /* USER CODE BEGIN RTOS_MUTEX */
   /* add mutexes, ... */
   /* USER CODE END RTOS_MUTEX */
@@ -198,6 +216,18 @@ int main(void)
   /* definition and creation of overdue_queue */
   osMessageQDef(overdue_queue, 16, DD_TASK_LIST);
   overdue_queueHandle = osMessageCreate(osMessageQ(overdue_queue), NULL);
+
+  /* definition and creation of make_active_queue */
+  osMessageQDef(make_active_queue, 16, uint16_t);
+  make_active_queueHandle = osMessageCreate(osMessageQ(make_active_queue), NULL);
+
+  /* definition and creation of make_completed_queue */
+  osMessageQDef(make_completed_queue, 16, uint16_t);
+  make_completed_queueHandle = osMessageCreate(osMessageQ(make_completed_queue), NULL);
+
+  /* definition and creation of make_overdue_queue */
+  osMessageQDef(make_overdue_queue, 16, uint16_t);
+  make_overdue_queueHandle = osMessageCreate(osMessageQ(make_overdue_queue), NULL);
 
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
@@ -525,30 +555,6 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-void release_dd_task(TaskHandle_t t_handle, TASK_TYPE type, uint32_t task_id,uint32_t absolute_deadline){
-	// malloc here
-	DD_TASK_LIST task = (DD_TASK_LIST){
-			.task = (DD_TASK){
-			     .t_handle = t_handle,
-			     .type = type,
-			     .task_id = task_id,
-			     .release_time = 0,
-			     .absolute_deadline = absolute_deadline,
-			     .completion_time = 0
-			},
-			.next_task = NULL
-	};
-	osMutexWait(dds_task_queue_mutexHandle, osWaitForever);
-	osMutexWait(active_queue_mutexHandle, osWaitForever);
-	osMessagePut(dds_task_queueHandle, 3, osWaitForever);
-	osMessagePut(active_queueHandle, (int)&task, osWaitForever);
-	osMutexRelease(active_queue_mutexHandle);
-	osMutexRelease(dds_task_queue_mutexHandle);
-}
-
-void complete_dd_task(DD_TASK* task){
-
-}
 
 DD_TASK_LIST* get_active_dd_task_list(){
 	osMutexWait(dds_task_queue_mutexHandle, osWaitForever);
@@ -606,6 +612,66 @@ DD_TASK_LIST* get_overdue_dd_task_list(){
 	DD_TASK_LIST* overdue = (DD_TASK_LIST*)event.value.v;
 	return overdue;
 }
+
+void release_dd_task(TaskHandle_t t_handle, TASK_TYPE type, uint32_t task_id,uint32_t absolute_deadline){
+	// malloc here
+
+	DD_TASK_LIST* task = (DD_TASK_LIST*) malloc(sizeof(DD_TASK_LIST));
+	task->task.t_handle = t_handle;
+	task->task.type = type;
+	task->task.task_id = task_id;
+	task->task.release_time = 0;
+	task->task.absolute_deadline = absolute_deadline;
+	task->task.completion_time = 0;
+	task->next = NULL;
+
+	osMutexWait(dds_task_queue_mutexHandle, osWaitForever);
+	osMutexWait(make_active_queue_mutexHandle, osWaitForever);
+	osMessagePut(dds_task_queueHandle, 3, osWaitForever);
+	osMessagePut(make_active_queueHandle, (int)&task, osWaitForever);
+	osMutexRelease(make_active_queue_mutexHandle);
+	osMutexRelease(dds_task_queue_mutexHandle);
+}
+
+void complete_dd_task(DD_TASK* task, int clock_time){
+	DD_TASK_LIST* searching_task = get_active_dd_task_list();
+	DD_TASK_LIST* found_task = NULL;
+	DD_TASK_LIST* overdue_tasks = NULL;
+	while (searching_task != NULL){
+		if (searching_task->task.absolute_deadline < clock_time){
+			if (overdue_tasks == NULL){
+				overdue_tasks = searching_task;
+				searching_task = searching_task->next;
+				overdue_tasks->next = NULL;
+			}
+			else {
+				DD_TASK_LIST* overdue_last_task = overdue_tasks;
+				while(overdue_last_task->next != NULL){
+					continue;
+				}
+				overdue_last_task = searching_task;
+				searching_task = searching_task->next;
+				overdue_tasks->next = NULL;
+			}
+		}
+		else {
+			if (searching_task->task.task_id == task->task_id && found_task == NULL){
+				found_task = searching_task;
+			}
+			searching_task = searching_task->next;
+		}
+	}
+
+	osMutexWait(dds_task_queue_mutexHandle, osWaitForever);
+	osMutexWait(make_completed_queue_mutexHandle, osWaitForever);
+	osMutexWait(make_overdue_queue_mutexHandle, osWaitForever);
+	osMessagePut(dds_task_queueHandle, 3, osWaitForever);
+	osMessagePut(make_completed_queueHandle, (int)&found_task, osWaitForever);
+	osMessagePut(make_overdue_queue_mutexHandle, (int) &overdue_tasks, osWaitForever);
+	osMutexRelease(make_overdue_queue_mutexHandle);
+	osMutexRelease(make_completed_queue_mutexHandle);
+	osMutexRelease(dds_task_queue_mutexHandle);
+}
 /* USER CODE END 4 */
 
 /* USER CODE BEGIN Header_StartDefaultTask */
@@ -618,7 +684,11 @@ DD_TASK_LIST* get_overdue_dd_task_list(){
 void StartDefaultTask(void const * argument)
 {
   /* USER CODE BEGIN 5 */
-  // Don't do anything and just let the task die.
+  /* Infinite loop */
+  for(;;)
+  {
+	  osDelay(1);
+  }
   /* USER CODE END 5 */
 }
 
@@ -631,11 +701,54 @@ void StartDefaultTask(void const * argument)
 /* USER CODE END Header_DeadlineDrivenScheduler */
 void DeadlineDrivenScheduler(void const * argument)
 {
+	DD_TASK_LIST* active_tasks = NULL;
+	DD_TASK_LIST* completed_tasks = NULL;
+	DD_TASK_LIST* overdue_tasks = NULL;
+	osEvent event;
   /* USER CODE BEGIN DeadlineDrivenScheduler */
   /* Infinite loop */
   for(;;)
   {
-    osDelay(1);
+	  // Release DD Task
+		osMutexWait(make_active_queue_mutexHandle, osWaitForever);
+		event = osMessageGet(make_active_queueHandle, 0);
+		osMutexRelease(make_active_queue_mutexHandle);
+
+		if(event.status == osEventMessage){
+			// add new task to proper place in active queue
+		}
+	  // Complete DD Task
+		osMutexWait(make_completed_queue_mutexHandle, osWaitForever);
+		event = osMessageGet(make_completed_queueHandle, 0);
+		osMutexRelease(make_completed_queue_mutexHandle);
+
+		if(event.status == osEventMessage){
+			// put task into completed queue
+			// start new task
+			// put overdue tasks away
+		}
+	  // Get Lists
+		osMutexWait(dds_task_queue_mutexHandle, osWaitForever);
+		event = osMessageGet(make_active_queueHandle, 0);
+		osMutexRelease(make_active_queue_mutexHandle);
+
+		if(event.status == osEventMessage){
+			if (event.value.v == 0){
+				osMutexWait(active_queue_mutexHandle, osWaitForever);
+				osMessagePut(active_queueHandle, (int)active_tasks, osWaitForever);
+				osMutexRelease(active_queue_mutexHandle);
+			}
+			else if (event.value.v == 1){
+				osMutexWait(completed_queue_mutexHandle, osWaitForever);
+				osMessagePut(completed_queueHandle, (int)completed_tasks, osWaitForever);
+				osMutexRelease(completed_queue_mutexHandle);
+			}
+			else if (event.value.v == 2){
+				osMutexWait(overdue_queue_mutexHandle, osWaitForever);
+				osMessagePut(overdue_queueHandle, (int)overdue_tasks, osWaitForever);
+				osMutexRelease(overdue_queue_mutexHandle);
+			}
+		}
   }
   /* USER CODE END DeadlineDrivenScheduler */
 }
