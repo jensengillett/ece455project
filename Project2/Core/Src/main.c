@@ -22,7 +22,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include <stdlib.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -116,6 +116,11 @@ typedef struct dd_task_list {
     DD_TASK task;
     struct dd_task_list* next;
 } DD_TASK_LIST;
+
+typedef struct time_struct{
+	uint32_t period;
+	uint32_t execution_time;
+}time_struct;
 /* USER CODE END 0 */
 
 /**
@@ -684,11 +689,7 @@ void complete_dd_task(DD_TASK* task, int clock_time){
 void StartDefaultTask(void const * argument)
 {
   /* USER CODE BEGIN 5 */
-  /* Infinite loop */
-  for(;;)
-  {
-	  osDelay(1);
-  }
+  // die
   /* USER CODE END 5 */
 }
 
@@ -779,15 +780,24 @@ void TaskGenerator(void const * argument)
 
 	/* definition and creation of task_1_timer */
 	osTimerDef(task_1_timer, task_1_timer_callback);
-	task_1_timerHandle = osTimerCreate(osTimer(task_1_timer), osTimerPeriodic, (void*)task_1_execution_time);
+	time_struct* task_1_time = (time_struct*) malloc(sizeof(time_struct));
+	task_1_time -> period = task_1_period;
+	task_1_time -> execution_time = task_1_execution_time;
+	task_1_timerHandle = osTimerCreate(osTimer(task_1_timer), osTimerPeriodic, (void*)task_1_time);
 
 	/* definition and creation of task_2_timer */
 	osTimerDef(task_2_timer, task_2_timer_callback);
-	task_2_timerHandle = osTimerCreate(osTimer(task_2_timer), osTimerPeriodic, (void*)task_2_execution_time);
+	time_struct* task_2_time = (time_struct*) malloc(sizeof(time_struct));
+	task_2_time -> period = task_2_period;
+	task_2_time -> execution_time = task_2_execution_time;
+	task_2_timerHandle = osTimerCreate(osTimer(task_2_timer), osTimerPeriodic, (void*)task_2_time);
 
 	/* definition and creation of task_3_timer */
 	osTimerDef(task_3_timer, task_3_timer_callback);
-	task_3_timerHandle = osTimerCreate(osTimer(task_3_timer), osTimerPeriodic, (void*)task_3_execution_time);
+	time_struct* task_3_time = (time_struct*) malloc(sizeof(time_struct));
+	task_3_time -> period = task_3_period;
+	task_3_time -> execution_time = task_3_execution_time;
+	task_3_timerHandle = osTimerCreate(osTimer(task_3_timer), osTimerPeriodic, (void*)task_3_time);
 
 	osTimerStart(task_1_timerHandle, task_1_period);
 	osTimerStart(task_2_timerHandle, task_2_period);
@@ -819,25 +829,40 @@ void Monitor(void const * argument)
 /* task_1_timer_callback function */
 void task_1_timer_callback(void const * argument)
 {
-  /* USER CODE BEGIN task_1_timer_callback */
-
-  /* USER CODE END task_1_timer_callback */
+	/* USER CODE BEGIN task_1_timer_callback */
+	static uint32_t count = 0;
+	count++;
+	time_struct* task_1_time = (time_struct*)&argument;
+	uint32_t period = task_1_time -> period;
+	uint32_t execution_time = task_1_time -> execution_time;
+	release_dd_task(red_light_taskHandle, PERIODIC, count, count * period, execution_time);
+	/* USER CODE END task_1_timer_callback */
 }
 
 /* task_2_timer_callback function */
 void task_2_timer_callback(void const * argument)
 {
-  /* USER CODE BEGIN task_2_timer_callback */
-
-  /* USER CODE END task_2_timer_callback */
+	/* USER CODE BEGIN task_2_timer_callback */
+	static uint32_t count = 0;
+	count++;
+	time_struct* task_2_time = (time_struct*)&argument;
+	uint32_t period = task_2_time -> period;
+	uint32_t execution_time = task_2_time -> execution_time;
+	release_dd_task(amber_light_tasHandle, PERIODIC, count, count * period, execution_time);
+	/* USER CODE END task_2_timer_callback */
 }
 
 /* task_3_timer_callback function */
 void task_3_timer_callback(void const * argument)
 {
-  /* USER CODE BEGIN task_3_timer_callback */
-
-  /* USER CODE END task_3_timer_callback */
+	/* USER CODE BEGIN task_3_timer_callback */
+	static uint32_t count = 0;
+	count++;
+	time_struct* task_3_time = (time_struct*)&argument;
+	uint32_t period = task_3_time -> period;
+	uint32_t execution_time = task_3_time -> execution_time;
+	release_dd_task(green_light_tasHandle, PERIODIC, count, count * period, execution_time);
+	/* USER CODE END task_3_timer_callback */
 }
 
 /**
