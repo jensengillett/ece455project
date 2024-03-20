@@ -618,7 +618,7 @@ DD_TASK_LIST* get_overdue_dd_task_list(){
 	return overdue;
 }
 
-void release_dd_task(TaskHandle_t t_handle, TASK_TYPE type, uint32_t task_id,uint32_t absolute_deadline){
+void release_dd_task(TaskHandle_t t_handle, TASK_TYPE type, uint32_t task_id,uint32_t absolute_deadline, uint32_t execution_time){
 	// malloc here
 
 	DD_TASK_LIST* task = (DD_TASK_LIST*) malloc(sizeof(DD_TASK_LIST));
