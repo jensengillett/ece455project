@@ -880,7 +880,8 @@ void Monitor(void const * argument)
   /* Infinite loop */
   for(;;)
   {
-    osDelay(1);
+    osDelay(1500);
+
   }
   /* USER CODE END Monitor */
 }
@@ -935,7 +936,9 @@ void task_3_timer_callback(void const * argument)
 void RedLightTask(void const * argument)
 {
   /* USER CODE BEGIN RedLightTask */
-	int time = (int)&argument;
+	osMutexWait(task_duration_queue_mutexHandle, osWaitForever);
+	int time = osMessageGet(task_duration_queueHandle, osWaitForever);
+	osMutexRelease(task_duration_queue_mutexHandle);
 	HAL_GPIO_WritePin(GPIOD, LD5_Pin, GPIO_PIN_SET);
 	osDelay(time/2);
 	HAL_GPIO_WritePin(GPIOD, LD5_Pin, GPIO_PIN_RESET);
@@ -953,7 +956,9 @@ void RedLightTask(void const * argument)
 void AmberLightTask(void const * argument)
 {
   /* USER CODE BEGIN AmberLightTask */
-	int time = (int)&argument;
+	osMutexWait(task_duration_queue_mutexHandle, osWaitForever);
+	int time = osMessageGet(task_duration_queueHandle, osWaitForever);
+	osMutexRelease(task_duration_queue_mutexHandle);
 	HAL_GPIO_WritePin(GPIOD, LD3_Pin, GPIO_PIN_SET);
 	osDelay(time/2);
 	HAL_GPIO_WritePin(GPIOD, LD3_Pin, GPIO_PIN_RESET);
@@ -971,7 +976,9 @@ void AmberLightTask(void const * argument)
 void GreenLightTask(void const * argument)
 {
   /* USER CODE BEGIN GreenLightTask */
-	int time = (int)&argument;
+	osMutexWait(task_duration_queue_mutexHandle, osWaitForever);
+	int time = osMessageGet(task_duration_queueHandle, osWaitForever);
+	osMutexRelease(task_duration_queue_mutexHandle);
 	HAL_GPIO_WritePin(GPIOD, LD4_Pin, GPIO_PIN_SET);
 	osDelay(time/2);
 	HAL_GPIO_WritePin(GPIOD, LD4_Pin, GPIO_PIN_RESET);
