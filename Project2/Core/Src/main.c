@@ -65,6 +65,9 @@ osMessageQId make_active_queueHandle;
 osMessageQId make_completed_queueHandle;
 osMessageQId make_overdue_queueHandle;
 osMessageQId task_duration_queueHandle;
+osMessageQId task_1_time_queueHandle;
+osMessageQId task_2_time_queueHandle;
+osMessageQId task_3_time_queueHandle;
 osTimerId dds_control_timerHandle;
 osMutexId active_queue_mutexHandle;
 osMutexId completed_queue_mutexHandle;
@@ -74,6 +77,9 @@ osMutexId make_active_queue_mutexHandle;
 osMutexId make_completed_queue_mutexHandle;
 osMutexId make_overdue_queue_mutexHandle;
 osMutexId task_duration_queue_mutexHandle;
+osMutexId task_1_time_queue_mutexHandle;
+osMutexId task_2_time_queue_mutexHandle;
+osMutexId task_3_time_queue_mutexHandle;
 /* USER CODE BEGIN PV */
 osTimerId task_1_timerHandle;
 osTimerId task_2_timerHandle;
@@ -196,6 +202,18 @@ int main(void)
   osMutexDef(task_duration_queue_mutex);
   task_duration_queue_mutexHandle = osMutexCreate(osMutex(task_duration_queue_mutex));
 
+  /* definition and creation of task_1_time_queue_mutex */
+  osMutexDef(task_1_time_queue_mutex);
+  task_1_time_queue_mutexHandle = osMutexCreate(osMutex(task_1_time_queue_mutex));
+
+  /* definition and creation of task_2_time_queue_mutex */
+  osMutexDef(task_2_time_queue_mutex);
+  task_2_time_queue_mutexHandle = osMutexCreate(osMutex(task_2_time_queue_mutex));
+
+  /* definition and creation of task_3_time_queue_mutex */
+  osMutexDef(task_3_time_queue_mutex);
+  task_3_time_queue_mutexHandle = osMutexCreate(osMutex(task_3_time_queue_mutex));
+
   /* USER CODE BEGIN RTOS_MUTEX */
   /* add mutexes, ... */
   /* USER CODE END RTOS_MUTEX */
@@ -223,7 +241,7 @@ int main(void)
   completed_queueHandle = osMessageCreate(osMessageQ(completed_queue), NULL);
 
   /* definition and creation of dds_task_queue */
-  osMessageQDef(dds_task_queue, 16, uint16_t);
+  osMessageQDef(dds_task_queue, 16, uint32_t);
   dds_task_queueHandle = osMessageCreate(osMessageQ(dds_task_queue), NULL);
 
   /* definition and creation of overdue_queue */
@@ -243,8 +261,20 @@ int main(void)
   make_overdue_queueHandle = osMessageCreate(osMessageQ(make_overdue_queue), NULL);
 
   /* definition and creation of task_duration_queue */
-  osMessageQDef(task_duration_queue, 16, uint16_t);
+  osMessageQDef(task_duration_queue, 16, uint32_t);
   task_duration_queueHandle = osMessageCreate(osMessageQ(task_duration_queue), NULL);
+
+  /* definition and creation of task_1_time_queue */
+  osMessageQDef(task_1_time_queue, 16, uint32_t);
+  task_1_time_queueHandle = osMessageCreate(osMessageQ(task_1_time_queue), NULL);
+
+  /* definition and creation of task_2_time_queue */
+  osMessageQDef(task_2_time_queue, 16, uint32_t);
+  task_2_time_queueHandle = osMessageCreate(osMessageQ(task_2_time_queue), NULL);
+
+  /* definition and creation of task_3_time_queue */
+  osMessageQDef(task_3_time_queue, 16, uint32_t);
+  task_3_time_queueHandle = osMessageCreate(osMessageQ(task_3_time_queue), NULL);
 
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
