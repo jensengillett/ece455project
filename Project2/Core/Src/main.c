@@ -684,7 +684,7 @@ void release_dd_task(osThreadId t_handle, TASK_TYPE type, uint32_t task_id,uint3
 	osMutexRelease(dds_task_queue_mutexHandle);
 }
 
-void complete_dd_task(TaskHandle* task_handle, int clock_time){
+void complete_dd_task(osThreadId task_handle, int clock_time){
 	DD_TASK_LIST* searching_task = get_active_dd_task_list();
 	DD_TASK_LIST* found_task = NULL;
 	DD_TASK_LIST* overdue_tasks = NULL;
@@ -706,7 +706,7 @@ void complete_dd_task(TaskHandle* task_handle, int clock_time){
 			}
 		}
 		else {
-			if (searching_task->task.task_handle == task_handle && found_task == NULL){
+			if (searching_task->task.t_handle == task_handle && found_task == NULL){
 				found_task = searching_task;
 			}
 			searching_task = searching_task->next;
@@ -884,6 +884,9 @@ void TaskGenerator(void const * argument)
 	time_struct* task_1_time = (time_struct*) malloc(sizeof(time_struct));
 	task_1_time -> period = task_1_period;
 	task_1_time -> execution_time = task_1_execution_time;
+	osMutexWait(task_1_time_queue_mutexHandle, osWaitForever);
+	osMessagePut(task_1_time_queueHandle, (int)task_1_time, osWaitForever);
+	osMutexRelease(task_1_time_queue_mutexHandle);
 	task_1_timerHandle = osTimerCreate(osTimer(task_1_timer), osTimerPeriodic, (void*)task_1_time);
 
 	/* definition and creation of task_2_timer */
@@ -891,6 +894,9 @@ void TaskGenerator(void const * argument)
 	time_struct* task_2_time = (time_struct*) malloc(sizeof(time_struct));
 	task_2_time -> period = task_2_period;
 	task_2_time -> execution_time = task_2_execution_time;
+	osMutexWait(task_2_time_queue_mutexHandle, osWaitForever);
+	osMessagePut(task_2_time_queueHandle, (int)task_2_time, osWaitForever);
+	osMutexRelease(task_2_time_queue_mutexHandle);
 	task_2_timerHandle = osTimerCreate(osTimer(task_2_timer), osTimerPeriodic, (void*)task_2_time);
 
 	/* definition and creation of task_3_timer */
@@ -898,6 +904,9 @@ void TaskGenerator(void const * argument)
 	time_struct* task_3_time = (time_struct*) malloc(sizeof(time_struct));
 	task_3_time -> period = task_3_period;
 	task_3_time -> execution_time = task_3_execution_time;
+	osMutexWait(task_3_time_queue_mutexHandle, osWaitForever);
+	osMessagePut(task_3_time_queueHandle, (int)task_3_time, osWaitForever);
+	osMutexRelease(task_3_time_queue_mutexHandle);
 	task_3_timerHandle = osTimerCreate(osTimer(task_3_timer), osTimerPeriodic, (void*)task_3_time);
 
 	osStatus status = osTimerStart(task_1_timerHandle, task_1_period);
@@ -968,8 +977,14 @@ void task_1_timer_callback(void const * argument)
 {
 	/* USER CODE BEGIN task_1_timer_callback */
 	static uint32_t count = 0;
+	static time_struct* task_1_time = NULL;
 	count++;
-	time_struct* task_1_time = (time_struct*)&argument;
+	if(task_1_time == NULL){
+		osMutexWait(task_1_time_queue_mutexHandle, osWaitForever);
+		osEvent event = osMessageGet(task_1_time_queueHandle, 0);
+		task_1_time = (time_struct*)event.value.v;
+		osMutexRelease(task_1_time_queue_mutexHandle);
+	}
 	uint32_t period = task_1_time -> period;
 	uint32_t execution_time = task_1_time -> execution_time;
 	osThreadDef(red_light_task, RedLightTask, osPriorityLow, 0, 128);
@@ -983,8 +998,14 @@ void task_2_timer_callback(void const * argument)
 {
 	/* USER CODE BEGIN task_2_timer_callback */
 	static uint32_t count = 0;
+	static time_struct* task_2_time = NULL;
 	count++;
-	time_struct* task_2_time = (time_struct*)&argument;
+	if(task_2_time == NULL){
+		osMutexWait(task_2_time_queue_mutexHandle, osWaitForever);
+		osEvent event = osMessageGet(task_2_time_queueHandle, 0);
+		task_2_time = (time_struct*)event.value.v;
+		osMutexRelease(task_2_time_queue_mutexHandle);
+	}
 	uint32_t period = task_2_time -> period;
 	uint32_t execution_time = task_2_time -> execution_time;
 	osThreadDef(amber_light_tas, AmberLightTask, osPriorityLow, 0, 128);
@@ -998,8 +1019,14 @@ void task_3_timer_callback(void const * argument)
 {
 	/* USER CODE BEGIN task_3_timer_callback */
 	static uint32_t count = 0;
+	static time_struct* task_3_time = NULL;
 	count++;
-	time_struct* task_3_time = (time_struct*)&argument;
+	if(task_3_time == NULL){
+		osMutexWait(task_3_time_queue_mutexHandle, osWaitForever);
+		osEvent event = osMessageGet(task_3_time_queueHandle, 0);
+		task_3_time = (time_struct*)event.value.v;
+		osMutexRelease(task_3_time_queue_mutexHandle);
+	}
 	uint32_t period = task_3_time -> period;
 	uint32_t execution_time = task_3_time -> execution_time;
 	osThreadDef(green_light_tas, GreenLightTask, osPriorityLow, 0, 128);
@@ -1031,6 +1058,7 @@ void RedLightTask(void const * argument)
 	HAL_GPIO_WritePin(GPIOD, LD5_Pin, GPIO_PIN_RESET);
 	osDelay(time/2);
 
+	complete_dd_task(red_light_taskHandle, 69);
 	osThreadTerminate(red_light_taskHandle);
   /* USER CODE END RedLightTask */
 }
@@ -1059,6 +1087,7 @@ void AmberLightTask(void const * argument)
 	HAL_GPIO_WritePin(GPIOD, LD3_Pin, GPIO_PIN_RESET);
 	osDelay(time/2);
 
+	complete_dd_task(amber_light_tasHandle, 69);
 	osThreadTerminate(amber_light_tasHandle);
   /* USER CODE END AmberLightTask */
 }
@@ -1087,6 +1116,7 @@ void GreenLightTask(void const * argument)
 	HAL_GPIO_WritePin(GPIOD, LD4_Pin, GPIO_PIN_RESET);
 	osDelay(time/2);
 
+	complete_dd_task(green_light_tasHandle, 69);
 	osThreadTerminate(green_light_tasHandle);
   /* USER CODE END GreenLightTask */
 }
