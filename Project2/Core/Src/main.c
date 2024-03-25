@@ -654,7 +654,7 @@ void release_dd_task(osThreadId t_handle, TASK_TYPE type, uint32_t task_id,uint3
 	osMutexRelease(dds_task_queue_mutexHandle);
 }
 
-void complete_dd_task(DD_TASK* task, int clock_time){
+void complete_dd_task(TaskHandle* task_handle, int clock_time){
 	DD_TASK_LIST* searching_task = get_active_dd_task_list();
 	DD_TASK_LIST* found_task = NULL;
 	DD_TASK_LIST* overdue_tasks = NULL;
@@ -676,7 +676,7 @@ void complete_dd_task(DD_TASK* task, int clock_time){
 			}
 		}
 		else {
-			if (searching_task->task.task_id == task->task_id && found_task == NULL){
+			if (searching_task->task.task_handle == task_handle && found_task == NULL){
 				found_task = searching_task;
 			}
 			searching_task = searching_task->next;
