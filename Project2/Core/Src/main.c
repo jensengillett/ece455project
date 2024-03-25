@@ -63,6 +63,7 @@ osMessageQId overdue_queueHandle;
 osMessageQId make_active_queueHandle;
 osMessageQId make_completed_queueHandle;
 osMessageQId make_overdue_queueHandle;
+osMessageQId task_duration_queueHandle;
 osTimerId dds_control_timerHandle;
 osMutexId active_queue_mutexHandle;
 osMutexId completed_queue_mutexHandle;
@@ -71,6 +72,7 @@ osMutexId dds_task_queue_mutexHandle;
 osMutexId make_active_queue_mutexHandle;
 osMutexId make_completed_queue_mutexHandle;
 osMutexId make_overdue_queue_mutexHandle;
+osMutexId task_duration_queue_mutexHandle;
 /* USER CODE BEGIN PV */
 osTimerId task_1_timerHandle;
 osTimerId task_2_timerHandle;
@@ -110,6 +112,7 @@ typedef struct dd_task {
      uint32_t release_time;
      uint32_t absolute_deadline;
      uint32_t completion_time;
+     uint32_t execution_time;
 } DD_TASK;
 
 typedef struct dd_task_list {
@@ -188,6 +191,10 @@ int main(void)
   osMutexDef(make_overdue_queue_mutex);
   make_overdue_queue_mutexHandle = osMutexCreate(osMutex(make_overdue_queue_mutex));
 
+  /* definition and creation of task_duration_queue_mutex */
+  osMutexDef(task_duration_queue_mutex);
+  task_duration_queue_mutexHandle = osMutexCreate(osMutex(task_duration_queue_mutex));
+
   /* USER CODE BEGIN RTOS_MUTEX */
   /* add mutexes, ... */
   /* USER CODE END RTOS_MUTEX */
@@ -233,6 +240,10 @@ int main(void)
   /* definition and creation of make_overdue_queue */
   osMessageQDef(make_overdue_queue, 16, uint16_t);
   make_overdue_queueHandle = osMessageCreate(osMessageQ(make_overdue_queue), NULL);
+
+  /* definition and creation of task_duration_queue */
+  osMessageQDef(task_duration_queue, 16, uint16_t);
+  task_duration_queueHandle = osMessageCreate(osMessageQ(task_duration_queue), NULL);
 
   /* USER CODE BEGIN RTOS_QUEUES */
   /* add queues, ... */
@@ -628,7 +639,11 @@ void release_dd_task(TaskHandle_t t_handle, TASK_TYPE type, uint32_t task_id,uin
 	task->task.release_time = 0;
 	task->task.absolute_deadline = absolute_deadline;
 	task->task.completion_time = 0;
+	task->task.execution_time = execution_time;
 	task->next = NULL;
+
+
+	vTaskPrioritySet(t_handle, osPriorityLow);
 
 	osMutexWait(dds_task_queue_mutexHandle, osWaitForever);
 	osMutexWait(make_active_queue_mutexHandle, osWaitForever);
@@ -748,8 +763,12 @@ void DeadlineDrivenScheduler(void const * argument)
 				}
 				counter->next = new_task;
 			}
+
+			osMutexWait(task_duration_queue_mutexHandle, osWaitForever);
+			osMessagePut(task_duration_queueHandle, new_task->task.execution_time, osWaitForever);
+			osMutexRelease(task_duration_queue_mutexHandle);
 			// set task priority to high
-			vTaskPrioritySet(active_tasks->task.t_handle, 256);
+			vTaskPrioritySet(active_tasks->task.t_handle, osPriorityHigh);
 			// put overdue tasks away
 
 			osMutexWait(make_overdue_queue_mutexHandle, osWaitForever);
