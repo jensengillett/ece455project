@@ -294,7 +294,7 @@ int main(void)
   task_generatorHandle = osThreadCreate(osThread(task_generator), NULL);
 
   /* definition and creation of monitor */
-  osThreadDef(monitor, Monitor, osPriorityLow, 0, 128);
+  osThreadDef(monitor, Monitor, osPriorityNormal, 0, 128);
   monitorHandle = osThreadCreate(osThread(monitor), NULL);
 
   /* definition and creation of red_light_task */
@@ -630,7 +630,7 @@ DD_TASK_LIST* get_completed_dd_task_list(){
 	osMessagePut(dds_task_queueHandle, 1, osWaitForever);
 	osMutexRelease(dds_task_queue_mutexHandle);
 
-	//osThreadSetPriority(deadline_drivenHandle, osPriorityRealtime);
+	osThreadSetPriority(deadline_drivenHandle, osPriorityRealtime);
 	osThreadYield();
 
 	osMutexWait(completed_queue_mutexHandle, osWaitForever);
@@ -649,10 +649,10 @@ DD_TASK_LIST* get_completed_dd_task_list(){
 
 DD_TASK_LIST* get_overdue_dd_task_list(){
 	osMutexWait(dds_task_queue_mutexHandle, osWaitForever);
-	osMessagePut(dds_task_queueHandle, 0, osWaitForever);
+	osMessagePut(dds_task_queueHandle, 2, osWaitForever);
 	osMutexRelease(dds_task_queue_mutexHandle);
 
-	//osThreadSetPriority(deadline_drivenHandle, osPriorityRealtime);
+	osThreadSetPriority(deadline_drivenHandle, osPriorityRealtime);
 	osThreadYield();
 
 
@@ -663,6 +663,7 @@ DD_TASK_LIST* get_overdue_dd_task_list(){
 		osMutexWait(overdue_queue_mutexHandle, osWaitForever);
 		event = osMessageGet(overdue_queueHandle, 0);
 		osMutexRelease(overdue_queue_mutexHandle);
+		osThreadYield();
 	}
 
 	//TODO: this might be a hack, fix if it causes problems
@@ -698,7 +699,7 @@ void complete_dd_task(osThreadId task_handle){
 	DD_TASK_LIST* searching_task = get_active_dd_task_list();
 	DD_TASK_LIST* found_task = NULL;
 	DD_TASK_LIST* overdue_tasks = NULL;
-	uint32_t clock_time = osKernelSysTick() / 1000; // 1kHz
+	uint32_t clock_time = osKernelSysTick(); // 1kHz
 	while (searching_task != NULL){
 		if (searching_task->task.absolute_deadline < clock_time){
 			if (overdue_tasks == NULL){
@@ -729,7 +730,7 @@ void complete_dd_task(osThreadId task_handle){
 	osMutexWait(make_overdue_queue_mutexHandle, osWaitForever);
 	osMessagePut(dds_task_queueHandle, 3, osWaitForever);
 	osMessagePut(make_completed_queueHandle, (int)found_task, osWaitForever);
-	osMessagePut(make_overdue_queue_mutexHandle, (int)overdue_tasks, osWaitForever);
+	osMessagePut(make_overdue_queueHandle, (int)overdue_tasks, osWaitForever);
 	osMutexRelease(make_overdue_queue_mutexHandle);
 	osMutexRelease(make_completed_queue_mutexHandle);
 	osMutexRelease(dds_task_queue_mutexHandle);
@@ -1008,11 +1009,21 @@ void Monitor(void const * argument)
 		}
 
 		printf("Number of overdue tasks: %d\n", number_overdue_tasks);
+
+		osThreadYield();
 	}
   /* USER CODE END Monitor */
 }
 
 /* USER CODE BEGIN Header_RedLightTask */
+
+int _write(int le, char *ptr, int len){
+	int DataIdx;
+	for(DataIdx = 0; DataIdx < len; DataIdx++){
+		ITM_SendChar(*ptr++);
+	}
+	return len;
+}
 
 /* task_1_timer_callback function */
 void task_1_timer_callback(void const * argument)
