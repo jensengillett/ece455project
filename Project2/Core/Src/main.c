@@ -780,8 +780,8 @@ void DeadlineDrivenScheduler(void const * argument)
 			if (active_tasks == NULL){
 				active_tasks = (DD_TASK_LIST*) event.value.v;
 			}
-			if (active_tasks->next == NULL){
-				new_task = (DD_TASK_LIST* event.value.v);
+			else if (active_tasks->next == NULL){
+				new_task = (DD_TASK_LIST*) event.value.v;
 				active_tasks->next = new_task;
 				new_task->next = NULL;
 			}
@@ -821,16 +821,17 @@ void DeadlineDrivenScheduler(void const * argument)
 				counter->next = new_task;
 			}
 
-			DD_TASK_LIST* check_task = active_tasks;
-			DD_TASK_LIST* prev = NULL;
-			while (check_task != event.value.v && check_task != NULL){
-				prev = check_task;
-				check_task = check_task->next;
-			}
-			if (check_task != NULL){
-				prev->next = check_task->next;
-				check_task->next = NULL;
-			}
+//			DD_TASK_LIST* check_task = active_tasks;
+//			DD_TASK_LIST* prev = NULL;
+//			while (check_task != event.value.v && check_task != NULL){
+//				prev = check_task;
+//				check_task = check_task->next;
+//			}
+//			if (check_task != NULL){
+//				prev->next = check_task->next;
+//				check_task->next = NULL;
+//			}
+			active_tasks = active_tasks->next;
 
 			osMutexWait(task_duration_queue_mutexHandle, osWaitForever);
 			osMessagePut(task_duration_queueHandle, new_task->task.execution_time, osWaitForever);
