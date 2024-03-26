@@ -901,7 +901,7 @@ void DeadlineDrivenScheduler(void const * argument)
 void TaskGenerator(void const * argument)
 {
   /* USER CODE BEGIN TaskGenerator */
-	uint8_t active_testbench = 0;  // 0-indexed
+	uint8_t active_testbench = 2;  // 0-indexed
 	uint32_t testbenches[3][3][2] = {
 			{{ 95,500}, {150,500}, {250,750}},
 			{{ 95,250}, {150,500}, {250,750}},
@@ -1086,7 +1086,7 @@ void RedLightTask(void const * argument)
 	static int firstRun = 1;
 	if(firstRun == 1){
 		firstRun = 0;
-		osThreadTerminate(red_light_taskHandle);
+		osThreadTerminate(osThreadGetId());
 	}
 	osMutexWait(task_duration_queue_mutexHandle, osWaitForever);
 	osEvent event = osMessageGet(task_duration_queueHandle, osWaitForever);
@@ -1096,8 +1096,8 @@ void RedLightTask(void const * argument)
 	osDelay(time);
 	HAL_GPIO_WritePin(GPIOD, LD5_Pin, GPIO_PIN_RESET);
 
-	complete_dd_task(red_light_taskHandle, 69);
-	osThreadTerminate(red_light_taskHandle);
+	complete_dd_task(osThreadGetId(), 69);
+	osThreadTerminate(osThreadGetId());
   /* USER CODE END RedLightTask */
 }
 
@@ -1114,7 +1114,7 @@ void AmberLightTask(void const * argument)
 	static int firstRun = 1;
 	if(firstRun == 1){
 		firstRun = 0;
-		osThreadTerminate(amber_light_tasHandle);
+		osThreadTerminate(osThreadGetId());
 	}
 	osMutexWait(task_duration_queue_mutexHandle, osWaitForever);
 	osEvent event = osMessageGet(task_duration_queueHandle, osWaitForever);
@@ -1124,8 +1124,8 @@ void AmberLightTask(void const * argument)
 	osDelay(time);
 	HAL_GPIO_WritePin(GPIOD, LD3_Pin, GPIO_PIN_RESET);
 
-	complete_dd_task(amber_light_tasHandle, 69);
-	osThreadTerminate(amber_light_tasHandle);
+	complete_dd_task(osThreadGetId(), 69);
+	osThreadTerminate(osThreadGetId());
   /* USER CODE END AmberLightTask */
 }
 
@@ -1142,7 +1142,7 @@ void GreenLightTask(void const * argument)
 	static int firstRun = 1;
 	if(firstRun == 1){
 		firstRun = 0;
-		osThreadTerminate(green_light_tasHandle);
+		osThreadTerminate(osThreadGetId());
 	}
 	osMutexWait(task_duration_queue_mutexHandle, osWaitForever);
 	osEvent event = osMessageGet(task_duration_queueHandle, osWaitForever);
@@ -1152,8 +1152,9 @@ void GreenLightTask(void const * argument)
 	osDelay(time);
 	HAL_GPIO_WritePin(GPIOD, LD4_Pin, GPIO_PIN_RESET);
 
-	complete_dd_task(green_light_tasHandle, 69);
-	osThreadTerminate(green_light_tasHandle);
+	complete_dd_task(osThreadGetId(), 69);
+	osThreadTerminate(osThreadGetId());
+	osDelay(1);
   /* USER CODE END GreenLightTask */
 }
 
