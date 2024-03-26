@@ -831,7 +831,9 @@ void DeadlineDrivenScheduler(void const * argument)
 //				prev->next = check_task->next;
 //				check_task->next = NULL;
 //			}
+			prev = active_tasks;
 			active_tasks = active_tasks->next;
+			prev->next = NULL;
 
 			osMutexWait(task_duration_queue_mutexHandle, osWaitForever);
 			osMessagePut(task_duration_queueHandle, new_task->task.execution_time, osWaitForever);
