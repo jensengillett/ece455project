@@ -694,10 +694,11 @@ void release_dd_task(osThreadId t_handle, TASK_TYPE type, uint32_t task_id,uint3
 	osMutexRelease(dds_task_queue_mutexHandle);
 }
 
-void complete_dd_task(osThreadId task_handle, int clock_time){
+void complete_dd_task(osThreadId task_handle){
 	DD_TASK_LIST* searching_task = get_active_dd_task_list();
 	DD_TASK_LIST* found_task = NULL;
 	DD_TASK_LIST* overdue_tasks = NULL;
+	uint32_t clock_time = osKernelSysTick() / 1000; // 1kHz
 	while (searching_task != NULL){
 		if (searching_task->task.absolute_deadline < clock_time){
 			if (overdue_tasks == NULL){
@@ -1096,7 +1097,7 @@ void RedLightTask(void const * argument)
 	osDelay(time);
 	HAL_GPIO_WritePin(GPIOD, LD5_Pin, GPIO_PIN_RESET);
 
-	complete_dd_task(red_light_taskHandle, 69);
+	complete_dd_task(red_light_taskHandle);
 	osThreadTerminate(red_light_taskHandle);
   /* USER CODE END RedLightTask */
 }
@@ -1124,7 +1125,7 @@ void AmberLightTask(void const * argument)
 	osDelay(time);
 	HAL_GPIO_WritePin(GPIOD, LD3_Pin, GPIO_PIN_RESET);
 
-	complete_dd_task(amber_light_tasHandle, 69);
+	complete_dd_task(amber_light_tasHandle);
 	osThreadTerminate(amber_light_tasHandle);
   /* USER CODE END AmberLightTask */
 }
@@ -1152,7 +1153,7 @@ void GreenLightTask(void const * argument)
 	osDelay(time);
 	HAL_GPIO_WritePin(GPIOD, LD4_Pin, GPIO_PIN_RESET);
 
-	complete_dd_task(green_light_tasHandle, 69);
+	complete_dd_task(green_light_tasHandle);
 	osThreadTerminate(green_light_tasHandle);
   /* USER CODE END GreenLightTask */
 }
