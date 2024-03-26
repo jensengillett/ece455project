@@ -608,9 +608,8 @@ DD_TASK_LIST* get_active_dd_task_list(){
 	osMessagePut(dds_task_queueHandle, 0, osWaitForever);
 	osMutexRelease(dds_task_queue_mutexHandle);
 
-	osThreadSetPriority(deadline_drivenHandle, osPriorityHigh);
+	osThreadSetPriority(deadline_drivenHandle, osPriorityRealtime);
 	osThreadYield();
-	osThreadSetPriority(deadline_drivenHandle, osPriorityNormal);
 
 	osMutexWait(active_queue_mutexHandle, osWaitForever);
 	osEvent event = osMessageGet(active_queueHandle, 0);
@@ -631,9 +630,8 @@ DD_TASK_LIST* get_completed_dd_task_list(){
 	osMessagePut(dds_task_queueHandle, 1, osWaitForever);
 	osMutexRelease(dds_task_queue_mutexHandle);
 
-	osThreadSetPriority(deadline_drivenHandle, osPriorityHigh);
+	osThreadSetPriority(deadline_drivenHandle, osPriorityRealtime);
 	osThreadYield();
-	osThreadSetPriority(deadline_drivenHandle, osPriorityNormal);
 
 	osMutexWait(completed_queue_mutexHandle, osWaitForever);
 	osEvent event = osMessageGet(completed_queueHandle, 0);
@@ -654,9 +652,9 @@ DD_TASK_LIST* get_overdue_dd_task_list(){
 	osMessagePut(dds_task_queueHandle, 0, osWaitForever);
 	osMutexRelease(dds_task_queue_mutexHandle);
 
-	osThreadSetPriority(deadline_drivenHandle, osPriorityHigh);
+	osThreadSetPriority(deadline_drivenHandle, osPriorityRealtime);
 	osThreadYield();
-	osThreadSetPriority(deadline_drivenHandle, osPriorityNormal);
+
 
 	osMutexWait(overdue_queue_mutexHandle, osWaitForever);
 	osEvent event = osMessageGet(overdue_queueHandle, 0);
@@ -823,7 +821,7 @@ void DeadlineDrivenScheduler(void const * argument)
 
 //			DD_TASK_LIST* check_task = active_tasks;
 //			DD_TASK_LIST* prev = NULL;
-//			while (check_task != event.value.v && check_task != NULL){
+//			while (check_task != (DD_TASK_LIST*)event.value.v && check_task != NULL){
 //				prev = check_task;
 //				check_task = check_task->next;
 //			}
@@ -882,6 +880,7 @@ void DeadlineDrivenScheduler(void const * argument)
 				osMutexRelease(overdue_queue_mutexHandle);
 			}
 		}
+	osThreadSetPriority(deadline_drivenHandle, osPriorityNormal);
 	osThreadYield();
   	}
   /* USER CODE END DeadlineDrivenScheduler */
