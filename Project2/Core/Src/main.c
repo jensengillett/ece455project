@@ -759,7 +759,7 @@ void StartDefaultTask(void const * argument)
 void DeadlineDrivenScheduler(void const * argument)
 {
   /* USER CODE BEGIN DeadlineDrivenScheduler */
-	int started = 0;
+	int running = 0;
 	osEvent event;
 	DD_TASK_LIST* active_tasks = NULL;
 	DD_TASK_LIST* completed_tasks = NULL;
@@ -792,8 +792,8 @@ void DeadlineDrivenScheduler(void const * argument)
 				new_task->next = counter->next;
 				counter->next = new_task;
 			}
-			if (started == 0){
-				started = 1;
+			if (running == 0){
+				running = 1;
 				osMutexWait(task_duration_queue_mutexHandle, osWaitForever);
 				osMessagePut(task_duration_queueHandle, active_tasks->task.execution_time, osWaitForever);
 				osMutexRelease(task_duration_queue_mutexHandle);
@@ -839,6 +839,9 @@ void DeadlineDrivenScheduler(void const * argument)
 			// set task priority to high
 			if(active_tasks->task.t_handle != NULL && active_tasks != NULL){
 				osThreadSetPriority(active_tasks->task.t_handle, osPriorityNormal);
+			}
+			else {
+				running = 0;
 			}
 			// put overdue tasks away
 
