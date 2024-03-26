@@ -768,6 +768,9 @@ void DeadlineDrivenScheduler(void const * argument)
 			if (active_tasks == NULL){
 				active_tasks = (DD_TASK_LIST*) event.value.v;
 			}
+			if (active_tasks->next == NULL){
+				active_tasks->next = (DD_TASK_LIST* event.value.v);
+			}
 			else {
 				new_task = (DD_TASK_LIST*) event.value.v;
 				counter = active_tasks;
