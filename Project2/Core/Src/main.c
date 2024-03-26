@@ -233,11 +233,11 @@ int main(void)
 
   /* Create the queue(s) */
   /* definition and creation of active_queue */
-  osMessageQDef(active_queue, 16, DD_TASK_LIST);
+  osMessageQDef(active_queue, 16, uint32_t);
   active_queueHandle = osMessageCreate(osMessageQ(active_queue), NULL);
 
   /* definition and creation of completed_queue */
-  osMessageQDef(completed_queue, 16, DD_TASK_LIST);
+  osMessageQDef(completed_queue, 16, uint32_t);
   completed_queueHandle = osMessageCreate(osMessageQ(completed_queue), NULL);
 
   /* definition and creation of dds_task_queue */
@@ -245,7 +245,7 @@ int main(void)
   dds_task_queueHandle = osMessageCreate(osMessageQ(dds_task_queue), NULL);
 
   /* definition and creation of overdue_queue */
-  osMessageQDef(overdue_queue, 16, DD_TASK_LIST);
+  osMessageQDef(overdue_queue, 16, uint32_t);
   overdue_queueHandle = osMessageCreate(osMessageQ(overdue_queue), NULL);
 
   /* definition and creation of make_active_queue */
@@ -608,6 +608,10 @@ DD_TASK_LIST* get_active_dd_task_list(){
 	osMessagePut(dds_task_queueHandle, 0, osWaitForever);
 	osMutexRelease(dds_task_queue_mutexHandle);
 
+	osThreadSetPriority(deadline_drivenHandle, osPriorityHigh);
+	osThreadYield();
+	osThreadSetPriority(deadline_drivenHandle, osPriorityNormal);
+
 	osMutexWait(active_queue_mutexHandle, osWaitForever);
 	osEvent event = osMessageGet(active_queueHandle, 0);
 	osMutexRelease(active_queue_mutexHandle);
@@ -627,6 +631,10 @@ DD_TASK_LIST* get_completed_dd_task_list(){
 	osMessagePut(dds_task_queueHandle, 1, osWaitForever);
 	osMutexRelease(dds_task_queue_mutexHandle);
 
+	osThreadSetPriority(deadline_drivenHandle, osPriorityHigh);
+	osThreadYield();
+	osThreadSetPriority(deadline_drivenHandle, osPriorityNormal);
+
 	osMutexWait(completed_queue_mutexHandle, osWaitForever);
 	osEvent event = osMessageGet(completed_queueHandle, 0);
 	osMutexRelease(completed_queue_mutexHandle);
@@ -645,6 +653,10 @@ DD_TASK_LIST* get_overdue_dd_task_list(){
 	osMutexWait(dds_task_queue_mutexHandle, osWaitForever);
 	osMessagePut(dds_task_queueHandle, 0, osWaitForever);
 	osMutexRelease(dds_task_queue_mutexHandle);
+
+	osThreadSetPriority(deadline_drivenHandle, osPriorityHigh);
+	osThreadYield();
+	osThreadSetPriority(deadline_drivenHandle, osPriorityNormal);
 
 	osMutexWait(overdue_queue_mutexHandle, osWaitForever);
 	osEvent event = osMessageGet(overdue_queueHandle, 0);
@@ -717,8 +729,8 @@ void complete_dd_task(osThreadId task_handle, int clock_time){
 	osMutexWait(make_completed_queue_mutexHandle, osWaitForever);
 	osMutexWait(make_overdue_queue_mutexHandle, osWaitForever);
 	osMessagePut(dds_task_queueHandle, 3, osWaitForever);
-	osMessagePut(make_completed_queueHandle, (int)&found_task, osWaitForever);
-	osMessagePut(make_overdue_queue_mutexHandle, (int) &overdue_tasks, osWaitForever);
+	osMessagePut(make_completed_queueHandle, (int)found_task, osWaitForever);
+	osMessagePut(make_overdue_queue_mutexHandle, (int)overdue_tasks, osWaitForever);
 	osMutexRelease(make_overdue_queue_mutexHandle);
 	osMutexRelease(make_completed_queue_mutexHandle);
 	osMutexRelease(dds_task_queue_mutexHandle);
@@ -756,9 +768,9 @@ void DeadlineDrivenScheduler(void const * argument)
 	DD_TASK_LIST* overdue_tasks = NULL;
 	DD_TASK_LIST* counter;
 	DD_TASK_LIST* new_task;
-  /* Infinite loop */
-  for(;;)
-  {
+	/* Infinite loop */
+	for(;;)
+	{
 	  // Release DD Task
 		osMutexWait(make_active_queue_mutexHandle, osWaitForever);
 		event = osMessageGet(make_active_queueHandle, 0);
@@ -862,7 +874,8 @@ void DeadlineDrivenScheduler(void const * argument)
 				osMutexRelease(overdue_queue_mutexHandle);
 			}
 		}
-  }
+	osThreadYield();
+  	}
   /* USER CODE END DeadlineDrivenScheduler */
 }
 
@@ -1065,9 +1078,8 @@ void RedLightTask(void const * argument)
 	int time = event.value.v;
 	osMutexRelease(task_duration_queue_mutexHandle);
 	HAL_GPIO_WritePin(GPIOD, LD5_Pin, GPIO_PIN_SET);
-	osDelay(time/2);
+	osDelay(time);
 	HAL_GPIO_WritePin(GPIOD, LD5_Pin, GPIO_PIN_RESET);
-	osDelay(time/2);
 
 	complete_dd_task(red_light_taskHandle, 69);
 	osThreadTerminate(red_light_taskHandle);
@@ -1094,9 +1106,8 @@ void AmberLightTask(void const * argument)
 	int time = event.value.v;
 	osMutexRelease(task_duration_queue_mutexHandle);
 	HAL_GPIO_WritePin(GPIOD, LD3_Pin, GPIO_PIN_SET);
-	osDelay(time/2);
+	osDelay(time);
 	HAL_GPIO_WritePin(GPIOD, LD3_Pin, GPIO_PIN_RESET);
-	osDelay(time/2);
 
 	complete_dd_task(amber_light_tasHandle, 69);
 	osThreadTerminate(amber_light_tasHandle);
@@ -1123,9 +1134,8 @@ void GreenLightTask(void const * argument)
 	int time = event.value.v;
 	osMutexRelease(task_duration_queue_mutexHandle);
 	HAL_GPIO_WritePin(GPIOD, LD4_Pin, GPIO_PIN_SET);
-	osDelay(time/2);
+	osDelay(time);
 	HAL_GPIO_WritePin(GPIOD, LD4_Pin, GPIO_PIN_RESET);
-	osDelay(time/2);
 
 	complete_dd_task(green_light_tasHandle, 69);
 	osThreadTerminate(green_light_tasHandle);
