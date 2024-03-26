@@ -808,16 +808,18 @@ void DeadlineDrivenScheduler(void const * argument)
 		osMutexRelease(make_completed_queue_mutexHandle);
 
 		if(event.status == osEventMessage){
-			if (completed_tasks == NULL){
-				completed_tasks = (DD_TASK_LIST*) event.value.v;
-			}
-			else {
-				new_task = (DD_TASK_LIST*) event.value.v;
-				counter = completed_tasks;
-				while(counter->next != NULL){
-					counter = counter->next;
+			if (event.value.v != 0){
+				if (completed_tasks == NULL){
+					completed_tasks = (DD_TASK_LIST*) event.value.v;
 				}
-				counter->next = new_task;
+				else {
+					new_task = (DD_TASK_LIST*) event.value.v;
+					counter = completed_tasks;
+					while(counter->next != NULL){
+						counter = counter->next;
+					}
+					counter->next = new_task;
+				}
 			}
 
 //			DD_TASK_LIST* check_task = active_tasks;
