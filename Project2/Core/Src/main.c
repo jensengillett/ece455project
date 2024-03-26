@@ -290,7 +290,7 @@ int main(void)
   deadline_drivenHandle = osThreadCreate(osThread(deadline_driven), NULL);
 
   /* definition and creation of task_generator */
-  osThreadDef(task_generator, TaskGenerator, osPriorityNormal, 0, 128);
+  osThreadDef(task_generator, TaskGenerator, osPriorityAboveNormal, 0, 128);
   task_generatorHandle = osThreadCreate(osThread(task_generator), NULL);
 
   /* definition and creation of monitor */
@@ -630,7 +630,7 @@ DD_TASK_LIST* get_completed_dd_task_list(){
 	osMessagePut(dds_task_queueHandle, 1, osWaitForever);
 	osMutexRelease(dds_task_queue_mutexHandle);
 
-	osThreadSetPriority(deadline_drivenHandle, osPriorityRealtime);
+	//osThreadSetPriority(deadline_drivenHandle, osPriorityRealtime);
 	osThreadYield();
 
 	osMutexWait(completed_queue_mutexHandle, osWaitForever);
@@ -652,7 +652,7 @@ DD_TASK_LIST* get_overdue_dd_task_list(){
 	osMessagePut(dds_task_queueHandle, 0, osWaitForever);
 	osMutexRelease(dds_task_queue_mutexHandle);
 
-	osThreadSetPriority(deadline_drivenHandle, osPriorityRealtime);
+	//osThreadSetPriority(deadline_drivenHandle, osPriorityRealtime);
 	osThreadYield();
 
 
@@ -798,7 +798,7 @@ void DeadlineDrivenScheduler(void const * argument)
 				osMessagePut(task_duration_queueHandle, active_tasks->task.execution_time, osWaitForever);
 				osMutexRelease(task_duration_queue_mutexHandle);
 				// set task priority to high
-				osThreadSetPriority(active_tasks->task.t_handle, osPriorityHigh);
+				osThreadSetPriority(active_tasks->task.t_handle, osPriorityNormal);
 			}
 		}
 	  // Complete DD Task
@@ -820,7 +820,7 @@ void DeadlineDrivenScheduler(void const * argument)
 			}
 
 //			DD_TASK_LIST* check_task = active_tasks;
-//			DD_TASK_LIST* prev = NULL;
+			DD_TASK_LIST* prev = NULL;
 //			while (check_task != (DD_TASK_LIST*)event.value.v && check_task != NULL){
 //				prev = check_task;
 //				check_task = check_task->next;
@@ -837,7 +837,9 @@ void DeadlineDrivenScheduler(void const * argument)
 			osMessagePut(task_duration_queueHandle, new_task->task.execution_time, osWaitForever);
 			osMutexRelease(task_duration_queue_mutexHandle);
 			// set task priority to high
-			osThreadSetPriority(active_tasks->task.t_handle, osPriorityHigh);
+			if(active_tasks->task.t_handle != NULL && active_tasks != NULL){
+				osThreadSetPriority(active_tasks->task.t_handle, osPriorityNormal);
+			}
 			// put overdue tasks away
 
 			osMutexWait(make_overdue_queue_mutexHandle, osWaitForever);
@@ -879,8 +881,8 @@ void DeadlineDrivenScheduler(void const * argument)
 				osMessagePut(overdue_queueHandle, (int)overdue_tasks, osWaitForever);
 				osMutexRelease(overdue_queue_mutexHandle);
 			}
+			osThreadSetPriority(deadline_drivenHandle, osPriorityNormal);
 		}
-	osThreadSetPriority(deadline_drivenHandle, osPriorityNormal);
 	osThreadYield();
   	}
   /* USER CODE END DeadlineDrivenScheduler */
@@ -919,6 +921,7 @@ void TaskGenerator(void const * argument)
 	osMessagePut(task_1_time_queueHandle, (int)task_1_time, osWaitForever);
 	osMutexRelease(task_1_time_queue_mutexHandle);
 	task_1_timerHandle = osTimerCreate(osTimer(task_1_timer), osTimerPeriodic, (void*)task_1_time);
+	task_1_timer_callback(NULL);
 
 	/* definition and creation of task_2_timer */
 	osTimerDef(task_2_timer, task_2_timer_callback);
@@ -929,6 +932,7 @@ void TaskGenerator(void const * argument)
 	osMessagePut(task_2_time_queueHandle, (int)task_2_time, osWaitForever);
 	osMutexRelease(task_2_time_queue_mutexHandle);
 	task_2_timerHandle = osTimerCreate(osTimer(task_2_timer), osTimerPeriodic, (void*)task_2_time);
+	task_2_timer_callback(NULL);
 
 	/* definition and creation of task_3_timer */
 	osTimerDef(task_3_timer, task_3_timer_callback);
@@ -939,6 +943,7 @@ void TaskGenerator(void const * argument)
 	osMessagePut(task_3_time_queueHandle, (int)task_3_time, osWaitForever);
 	osMutexRelease(task_3_time_queue_mutexHandle);
 	task_3_timerHandle = osTimerCreate(osTimer(task_3_timer), osTimerPeriodic, (void*)task_3_time);
+	task_3_timer_callback(NULL);
 
 	osStatus status = osTimerStart(task_1_timerHandle, task_1_period);
 	status = osTimerStart(task_2_timerHandle, task_2_period);
