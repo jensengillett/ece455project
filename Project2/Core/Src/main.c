@@ -673,7 +673,7 @@ DD_TASK_LIST* get_overdue_dd_task_list(){
 
 void release_dd_task(osThreadId t_handle, TASK_TYPE type, uint32_t task_id,uint32_t absolute_deadline, uint32_t execution_time){
 	// malloc here
-
+	uint32_t clock_time = osKernelSysTick();
 	DD_TASK_LIST* task = (DD_TASK_LIST*) malloc(sizeof(DD_TASK_LIST));
 	task->task.t_handle = t_handle;
 	task->task.type = type;
@@ -890,7 +890,7 @@ void DeadlineDrivenScheduler(void const * argument)
 			}
 			osThreadSetPriority(deadline_drivenHandle, osPriorityNormal);
 		}
-	osThreadYield();
+		osThreadYield();
   	}
   /* USER CODE END DeadlineDrivenScheduler */
 }
@@ -905,7 +905,7 @@ void DeadlineDrivenScheduler(void const * argument)
 void TaskGenerator(void const * argument)
 {
   /* USER CODE BEGIN TaskGenerator */
-	uint8_t active_testbench = 2;  // 0-indexed
+	uint8_t active_testbench = 0;  // 0-indexed
 	uint32_t testbenches[3][3][2] = {
 			{{ 95,500}, {150,500}, {250,750}},
 			{{ 95,250}, {150,500}, {250,750}},
@@ -974,6 +974,8 @@ void Monitor(void const * argument)
 	for(;;){
 		osDelay(1500);  // every hyper period
 
+		printf("Current timestamp: %ldms\n", osKernelSysTick());
+
 		DD_TASK_LIST* active_task_list = get_active_dd_task_list();
 		int number_active_tasks = 0;
 		if(active_task_list != NULL){
@@ -1041,7 +1043,13 @@ void task_1_timer_callback(void const * argument)
 	uint32_t period = task_1_time -> period;
 	uint32_t execution_time = task_1_time -> execution_time;
 	osThreadDef(red_light_task, RedLightTask, osPriorityLow, 0, 128);
-	red_light_taskHandle = osThreadCreate(osThread(red_light_task), NULL);
+	red_light_taskHandle = 0;
+	while(red_light_taskHandle == 0){
+		red_light_taskHandle = osThreadCreate(osThread(red_light_task), NULL);
+		if(red_light_taskHandle == 0){
+			printf("Red returned 0, trying again\n");
+		}
+	}
 	release_dd_task(red_light_taskHandle, PERIODIC, count, count * period, execution_time);
 	/* USER CODE END task_1_timer_callback */
 }
@@ -1062,7 +1070,13 @@ void task_2_timer_callback(void const * argument)
 	uint32_t period = task_2_time -> period;
 	uint32_t execution_time = task_2_time -> execution_time;
 	osThreadDef(amber_light_tas, AmberLightTask, osPriorityLow, 0, 128);
-	amber_light_tasHandle = osThreadCreate(osThread(amber_light_tas), NULL);
+	amber_light_tasHandle = 0;
+	while(amber_light_tasHandle == 0){
+		amber_light_tasHandle = osThreadCreate(osThread(amber_light_tas), NULL);
+		if(amber_light_tasHandle == 0){
+			printf("Amber returned 0, trying again\n");
+		}
+	}
 	release_dd_task(amber_light_tasHandle, PERIODIC, count, count * period, execution_time);
 	/* USER CODE END task_2_timer_callback */
 }
@@ -1083,7 +1097,13 @@ void task_3_timer_callback(void const * argument)
 	uint32_t period = task_3_time -> period;
 	uint32_t execution_time = task_3_time -> execution_time;
 	osThreadDef(green_light_tas, GreenLightTask, osPriorityLow, 0, 128);
-	green_light_tasHandle = osThreadCreate(osThread(green_light_tas), NULL);
+	green_light_tasHandle = 0;
+	while(green_light_tasHandle == 0){
+		green_light_tasHandle = osThreadCreate(osThread(green_light_tas), NULL);
+		if(green_light_tasHandle == 0){
+			printf("Green returned 0, trying again!\n");
+		}
+	}
 	release_dd_task(green_light_tasHandle, PERIODIC, count, count * period, execution_time);
 	/* USER CODE END task_3_timer_callback */
 }
